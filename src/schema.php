@@ -19,7 +19,7 @@ class Schema
 	const SET_UPDATE = 2;
 	const SET_UPSERT = 3;
 
-	private static $comparers = array ('eq' => '=', 'ge' => '>=', 'gt' => '>', 'in' => 'IN', 'is' => 'IS', 'le' => '<=', 'lt' => '<', 'ne' => '!=');
+	private static $comparers = array ('eq' => '=', 'ge' => '>=', 'gt' => '>', 'in' => 'IN', 'is' => 'IS', 'le' => '<=', 'like' => 'LIKE', 'lt' => '<', 'ne' => '!=');
 	private static $logicals = array ('and' => 'AND', 'or' => 'OR');
 
 	public function __construct ($table, $fields, $separator = '__', $links = array ())
@@ -70,96 +70,32 @@ class Schema
 
 	public function get ($filters = array (), $orders = array (), $count = null, $offset = null)
 	{
-		$alias = '_0';
-		$params = array ();
-		$relation = '';
-
-		// Select columns from current schema
-		$select = $this->build_select ($alias, '');
-
 		// Select columns from links to other schemas
-		if (isset ($filters[self::FILTER_LINK]) && $filters[self::FILTER_LINK] !== null)
-		{
-			$sources = array (array ($filters[self::FILTER_LINK], $this, $alias, ''));
-			$unique = 1;
+		$alias = '_0';
+		$link = isset ($filters[self::FILTER_LINK]) ? $filters[self::FILTER_LINK] : array ();
+		$unique = 1;
 
-			while (($source = array_shift ($sources)) !== null)
-			{
-				list ($links, $parent_schema, $parent_alias, $base) = $source;
-
-				foreach ($links + $parent_schema->defaults as $name => $next)
-				{
-					if (!isset ($parent_schema->links[$name]))
-						throw new \Exception ("missing link '$name' in schema '$parent_schema->table'");
-
-					$link = $parent_schema->links[$name];
-
-					$foreign_schema = is_callable ($link[0]) ? $link[0] () : $link[0];
-					$foreign_alias = '_' . $unique++;
-
-					// Resolve internal and external connections
-					$connections = array ();
-
-					foreach ($link[2] as $parent_name => $foreign_name)
-					{
-						$foreign = $foreign_schema->get_value ($foreign_name, $foreign_alias);
-
-						if ($foreign === null)
-							throw new \Exception ("can't find field '$foreign_name' in schema '$foreign_schema->table' to match against '$parent_name' for link '$name' in schema '$parent_schema->table'");
-
-						$parent = $parent_schema->get_value ($parent_name, $parent_alias);
-
-						if ($parent === null)
-						{
-							if (!isset ($next[$parent_name]))
-								throw new \Exception ("can't find external value '$parent_name' to match against field '$foreign_name' in schema '$foreign_schema->table' for link '$name' in schema '$parent_schema->table'");
-
-							$params[] = $next[$parent_name];
-							$parent = self::MACRO_PARAM;
-
-							unset ($next[$parent_name]);
-						}
-
-						$connections[] = array ($foreign, $parent);
-					}
-
-					$namespace = $base . $name . $this->separator;
-					$relation .= ' ' . $foreign_schema->build_relation ($link[1], $foreign_alias, $connections);
-					$select .= ', ' . $foreign_schema->build_select ($foreign_alias, $namespace);
-
-					// Append linked entities to stack
-					if (isset ($next[self::FILTER_LINK]) && $next[self::FILTER_LINK] !== null)
-						$sources[] = array ($next[self::FILTER_LINK], $foreign_schema, $foreign_alias, $namespace);
-
-					unset ($next[self::FILTER_LINK]);
-
-					// Append remaining condition filters
-					$relation .= $foreign_schema->build_condition ($next, $foreign_alias, ' AND (', ')', $params);
-				}
-			}
-		}
-
-		unset ($filters[self::FILTER_LINK]);
+		list ($select, $relation, $params) = $this->build_connection ($link, $alias, '', $unique);
 
 		// Build "where", "order by" and "limit" clauses
 		$condition = $this->build_condition ($filters, $alias, ' WHERE ', '', $params);
-		$order = $this->build_order ($orders);
+		$sort = $this->build_sort ($orders);
 
 		if ($count !== null)
 		{
 			$params[] = $offset !== null ? (int)$offset : 0;
 			$params[] = (int)$count;
 
-			$limit = ' LIMIT ' . self::MACRO_PARAM . ', ' . self::MACRO_PARAM;
+			$range = ' LIMIT ' . self::MACRO_PARAM . ', ' . self::MACRO_PARAM;
 		}
 		else
-			$limit = '';
+			$range = '';
 
 		return array
 		(
-			'SELECT ' . $select .
+			'SELECT ' . $this->build_select ($alias, '') . $select .
 			' FROM ' . self::ESCAPE_BEGIN . $this->table . self::ESCAPE_END . ' ' . self::ESCAPE_BEGIN . $alias . self::ESCAPE_END .
-			$relation . $condition . $order . $limit,
+			$relation . $condition . $sort . $range,
 			$params
 		);
 	}
@@ -278,20 +214,19 @@ class Schema
 	private function build_condition ($filters, $alias, $begin, $end, &$params)
 	{
 		if (isset ($filters[self::FILTER_GROUP]) && isset (self::$logicals[$filters[self::FILTER_GROUP]]))
-		{
 			$logical = ' ' . self::$logicals[$filters[self::FILTER_GROUP]] . ' ';
-
-			unset ($filters[self::FILTER_GROUP]);
-		}
 		else
 			$logical = ' AND ';
 
 		$condition = '';
-		$pattern = '/^(.*)\|([a-z]{2})$/';
+		$pattern = '/^(.*)\|([a-z]{2,4})$/';
 		$separator = false;
 
 		foreach ($filters as $name => $value)
 		{
+			if ($name === self::FILTER_GROUP || $name === self::FILTER_LINK)
+				continue;
+
 			// Complex sub-condition group
 			if (is_array ($value) && is_numeric ($name))
 				$append = $this->build_condition ($value, $alias, '(', ')', $params);
@@ -334,42 +269,78 @@ class Schema
 		return '';
 	}
 
-	private function build_order ($orders)
+	private function build_connection ($link, $alias, $base, &$unique)
 	{
-		$order = '';
+		$params = array ();
+		$relation = '';
+		$select = '';
 
-		foreach ($orders as $name => $asc)
+		foreach ($link + $this->defaults as $name => $children)
 		{
-			$column = $this->get_value ($name, '_0');
+			if (!isset ($this->links[$name]))
+				throw new \Exception ("missing link '$name' in schema '$this->table'");
 
-			if ($column === null)
-				throw new \Exception ("no valid field '$name' to order by in schema '$this->table'");
+			$foreign = $this->links[$name];
+			$foreign_schema = is_callable ($foreign[0]) ? $foreign[0] () : $foreign[0];
+			$foreign_alias = '_' . $unique++;
 
-			$order .= ($order === '' ? ' ORDER BY ' : ', ') . $column . ($asc ? '' : ' DESC');
+			// Build fields selection and join to foreign table
+			$namespace = $base . $name . $this->separator;
+
+			if (($foreign[1] & self::LINK_OPTIONAL) === 0)
+				$type = 'INNER';
+			else
+				$type = 'LEFT';
+
+			$relation .= ' ' . $type . ' JOIN (' .
+				self::ESCAPE_BEGIN . $foreign_schema->table . self::ESCAPE_END . ' ' .
+				self::ESCAPE_BEGIN . $foreign_alias . self::ESCAPE_END;
+
+			$select .= ', ' . $foreign_schema->build_select ($foreign_alias, $namespace);
+
+			// Recursively merge nested fields and tables
+			$inner_link = isset ($children[self::FILTER_LINK]) ? $children[self::FILTER_LINK] : array ();
+
+			list ($inner_select, $inner_relation, $inner_params) = $foreign_schema->build_connection ($inner_link, $foreign_alias, $namespace, $unique);
+
+			$params = array_merge ($params, $inner_params);
+			$relation .= $inner_relation;
+			$select .= $inner_select;
+
+			// Resolve relation conditions
+			$relation .= ') ON ';
+			$logical = '';
+
+			foreach ($foreign[2] as $parent_name => $foreign_name)
+			{
+				$foreign = $foreign_schema->get_value ($foreign_name, $foreign_alias);
+
+				if ($foreign === null)
+					throw new \Exception ("can't map missing field '$foreign_name' in schema '$foreign_schema->table' to '$parent_name' for link '$name' in schema '$this->table'");
+
+				$parent = $this->get_value ($parent_name, $alias);
+
+				if ($parent === null)
+				{
+					if ($children === null || !isset ($children[$parent_name]))
+						throw new \Exception ("can't map missing value '$parent_name' to '$foreign_name' in schema '$foreign_schema->table' for link '$name' in schema '$this->table'");
+
+					$params[] = $children[$parent_name];
+					$parent = self::MACRO_PARAM;
+
+					unset ($children[$parent_name]);
+				}
+
+				$relation .= $logical . $foreign . ' = ' . $parent;
+				$logical = ' AND ';
+			}
+
+			// Append external conditions
+			if ($children !== null)
+				$relation .= $foreign_schema->build_condition ($children, $foreign_alias, ' AND (', ')', $params);
 		}
 
-		return $order;
-	}
-
-	private function build_relation ($flags, $alias, $connections)
-	{
-		if (($flags & self::LINK_OPTIONAL) === 0)
-			$type = 'INNER';
-		else
-			$type = 'LEFT';
-
-		$condition = '';
-		$logical = ' ON ';
-
-		foreach ($connections as $connection)
-		{
-			$condition .= $logical . $connection[0] . ' = ' . $connection[1];
-			$logical = ' AND ';
-		}
-
-		return $type . ' JOIN ' . self::ESCAPE_BEGIN . $this->table . self::ESCAPE_END .
-			' ' . self::ESCAPE_BEGIN . $alias . self::ESCAPE_END .
-			$condition;
+		return array ($select, $relation, $params);
 	}
 
 	private function build_select ($alias, $namespace)
@@ -378,9 +349,31 @@ class Schema
 		$scope = self::ESCAPE_BEGIN . $alias . self::ESCAPE_END . '.';
 
 		foreach ($this->fields as $name => $field)
+		{
+			if (($field[0] & self::FIELD_INTERNAL) !== 0)
+				continue;
+
 			$columns .= ', ' . str_replace (self::MACRO_SCOPE, $scope, $field[1]) . ' ' . self::ESCAPE_BEGIN . $namespace . $name . self::ESCAPE_END;
+		}
 
 		return substr ($columns, 2);
+	}
+
+	private function build_sort ($orders)
+	{
+		$sort = '';
+
+		foreach ($orders as $name => $asc)
+		{
+			$column = $this->get_value ($name, '_0');
+
+			if ($column === null)
+				throw new \Exception ("no valid field '$name' to order by in schema '$this->table'");
+
+			$sort .= ($sort === '' ? ' ORDER BY ' : ', ') . $column . ($asc ? '' : ' DESC');
+		}
+
+		return $sort;
 	}
 
 	private function get_assignment ($name, $field, $value)

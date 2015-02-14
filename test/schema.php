@@ -79,6 +79,12 @@ $schema_bookmark = new RedMap\Schema
 	)
 );
 
+// Test 1
+list ($query, $params) = $schema_section->get (array ('id' => 101));
+
+$row = $driver->get_first ($query, $params);
+
+// Test 2
 list ($query, $params) = $schema_topic->get (array
 (
 	'id' => 57,
