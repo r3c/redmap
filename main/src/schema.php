@@ -2,6 +2,14 @@
 
 namespace RedMap;
 
+class Increment
+{
+	public function __construct ($delta)
+	{
+		$this->delta = $delta;
+	}
+}
+
 class Schema
 {
 	const ESCAPE_BEGIN = '`';
@@ -112,8 +120,7 @@ class Schema
 				throw new \Exception ("no valid field '$name' to update on in schema '$this->table'");
 
 			$field = $this->fields[$name];
-
-			list ($column, $value) = $this->get_assignment ($name, $field, $value);
+			$column = $this->get_assignment ($name, $field);
 
 			if (($field[0] & self::FIELD_PRIMARY) === 0)
 				$changes[$column] = $value;
@@ -152,7 +159,16 @@ class Schema
 
 				foreach ($changes as $column => $value)
 				{
-					$update .= ', ' . self::ESCAPE_BEGIN . $column . self::ESCAPE_END . ' = ' . self::MACRO_PARAM;
+					$update .= ', ' . self::ESCAPE_BEGIN . $column . self::ESCAPE_END . ' = ';
+
+					if ($value instanceof Increment)
+					{
+						$update .= self::ESCAPE_BEGIN . $column . self::ESCAPE_END . ' + ' . self::MACRO_PARAM;
+						$value = $value->delta;
+					}
+					else
+						$update .= self::MACRO_PARAM;
+
 					$values[] = $value;
 				}
 
@@ -378,7 +394,7 @@ class Schema
 		return $sort;
 	}
 
-	private function get_assignment ($name, $field, $value)
+	private function get_assignment ($name, $field)
 	{
 		static $pattern;
 
@@ -388,7 +404,7 @@ class Schema
 		if (!preg_match ($pattern, $field[1], $match))
 			throw new \Exception ("can't assign value to field '$name' in schema '$this->table'");
 
-		return array ($match[1], $value);
+		return $match[1];
 	}
 
 	private function get_value ($name, $alias)

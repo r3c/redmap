@@ -35,6 +35,16 @@ sql_assert_set ($message, RedMap\Schema::SET_UPDATE, array ('id' => $id, 'author
 
 sql_assert_get ($message, array ('id' => $id), array (array ('id' => (string)$id, 'author' => '42', 'text' => 'Updated', 'time' => '500')));
 
+// Update with positive increment
+sql_assert_set ($message, RedMap\Schema::SET_UPDATE, array ('id' => $id, 'author' => new RedMap\Increment (1)));
+
+sql_assert_get ($message, array ('id' => $id), array (array ('id' => (string)$id, 'author' => '43', 'text' => 'Updated', 'time' => '500')));
+
+// Update with negative increment
+sql_assert_set ($message, RedMap\Schema::SET_UPDATE, array ('id' => $id, 'author' => new RedMap\Increment (-7)));
+
+sql_assert_get ($message, array ('id' => $id), array (array ('id' => (string)$id, 'author' => '36', 'text' => 'Updated', 'time' => '500')));
+
 // Upsert existing row
 sql_assert_set ($message, RedMap\Schema::SET_UPSERT, array ('id' => $id, 'author' => 17));
 
