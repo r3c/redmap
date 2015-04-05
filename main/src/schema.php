@@ -106,12 +106,14 @@ class Schema
 		$indices = array ();
 
 		// Extract primary values (indices) and changeable values (changes)
-		foreach ($this->fields as $name => $field)
+		foreach ($pairs as $name => $value)
 		{
-			if (!isset ($pairs[$name]))
-				continue;
+			if (!isset ($this->fields[$name]))
+				throw new \Exception ("no valid field '$name' to update on in schema '$this->table'");
 
-			list ($column, $value) = $this->get_assignment ($name, $field, $pairs[$name]);
+			$field = $this->fields[$name];
+
+			list ($column, $value) = $this->get_assignment ($name, $field, $value);
 
 			if (($field[0] & self::FIELD_PRIMARY) === 0)
 				$changes[$column] = $value;

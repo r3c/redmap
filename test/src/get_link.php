@@ -1,7 +1,8 @@
 <?php
 
-require ('../src/drivers/mysqli.php');
-require ('../src/schema.php');
+require ('../../main/src/drivers/mysqli.php');
+require ('../../main/src/schema.php');
+require ('storage/sql.php');
 
 $company = new RedMap\Schema
 (
@@ -31,47 +32,12 @@ $employee = new RedMap\Schema
 	)
 );
 
-function compare ($schema, $filters, $expected)
-{
-	global $driver;
-
-	list ($query, $params) = $schema->get ($filters, array ('id' => true));
-
-	$returned = $driver->get_rows ($query, $params);
-
-	assert (count ($expected) === count ($returned), 'Same number of returned rows');
-
-	for ($i = 0; $i < count ($expected); ++$i)
-	{
-		$expected_row = $expected[$i];
-		$returned_row = $returned[$i];
-
-		assert (count ($expected_row) === count ($returned_row), 'Same number of fields in row #' . $i);
-
-		foreach ($expected_row as $key => $value)
-			assert (array_key_exists ($key, $returned_row) && $returned_row[$key] === $value, 'Match for key "' . $key . '" in row #' . $i);
-	}
-}
-
-function import ($path)
-{
-	global $driver;
-
-	assert ($driver->connection->multi_query (file_get_contents ($path)), 'Import SQL file "' . $path . '"');
-
-	while ($driver->connection->more_results ())
-		$driver->connection->next_result ();
-}
-
 // Start
-$driver = new RedMap\Drivers\MySQLiDriver ('utf-8');
-
-assert ($driver->connect ('root', '', 'redmap'), 'Connection to database');
-
-import ('get_link_start.sql');
+sql_connect ();
+sql_import ('../res/get_link_start.sql');
 
 // Test
-compare
+sql_assert_get
 (
 	$employee,
 	array ('+' => array ('company' => null)),
@@ -86,7 +52,7 @@ compare
 	)
 );
 
-compare
+sql_assert_get
 (
 	$employee,
 	array ('id' => 1, '+'  => array ('company' => null, 'manager' => null)),
@@ -96,7 +62,7 @@ compare
 	)
 );
 
-compare
+sql_assert_get
 (
 	$employee,
 	array ('id' => 2, '+' => array ('manager' => null)),
@@ -106,7 +72,7 @@ compare
 	)
 );
 
-compare
+sql_assert_get
 (
 	$employee,
 	array ('+' => array ('company' => array ('name|like' => 'A%'))),
@@ -117,7 +83,7 @@ compare
 	)
 );
 
-compare
+sql_assert_get
 (
 	$employee,
 	array ('id|in' => array (1, 2), '+' => array ('manager' => array ('+' => array ('company' => null)))),
@@ -129,6 +95,6 @@ compare
 );
 
 // Stop
-import ('get_link_stop.sql');
+sql_import ('../res/get_link_stop.sql');
 
 ?>

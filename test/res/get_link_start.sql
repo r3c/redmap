@@ -1,9 +1,9 @@
 
-CREATE TABLE IF NOT EXISTS `company` (
+CREATE TABLE `company` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(64) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=5 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `company` (`id`, `name`) VALUES
 (1, 'Google'),
@@ -11,13 +11,13 @@ INSERT INTO `company` (`id`, `name`) VALUES
 (3, 'Amazon'),
 (4, 'Apple');
 
-CREATE TABLE IF NOT EXISTS `employee` (
+CREATE TABLE `employee` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(64) NOT NULL,
   `company` int(10) unsigned NOT NULL,
   `manager` int(10) unsigned NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=7 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `employee` (`id`, `name`, `company`, `manager`) VALUES
 (1, 'Alice', 1, 0),
