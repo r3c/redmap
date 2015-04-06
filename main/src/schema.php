@@ -64,9 +64,8 @@ class Schema
 	public function delete ($filters)
 	{
 		$alias = '_0';
-		$params = array ();
 
-		$condition = $this->build_condition ($filters, $alias, ' WHERE ', '', $params);
+		list ($condition, $params) = $this->build_condition ($filters, $alias, ' WHERE ', '');
 
 		return array
 		(
@@ -80,13 +79,12 @@ class Schema
 	{
 		// Select columns from links to other schemas
 		$alias = '_0';
-		$link = isset ($filters[self::FILTER_LINK]) ? $filters[self::FILTER_LINK] : array ();
 		$unique = 1;
 
-		list ($select, $relation, $params) = $this->build_connection ($link, $alias, '', $unique);
+		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($filters, $alias, ' WHERE ', '', '', $unique);
 
 		// Build "where", "order by" and "limit" clauses
-		$condition = $this->build_condition ($filters, $alias, ' WHERE ', '', $params);
+		$params = array_merge ($relation_params, $condition_params);
 		$sort = $this->build_sort ($orders);
 
 		if ($count !== null)
@@ -229,7 +227,7 @@ class Schema
 		return array ('SELECT NULL', array ());
 	}
 
-	private function build_condition ($filters, $alias, $begin, $end, &$params)
+	private function build_condition ($filters, $alias, $begin, $end)
 	{
 		if (isset ($filters[self::FILTER_GROUP]) && isset (self::$logicals[$filters[self::FILTER_GROUP]]))
 			$logical = ' ' . self::$logicals[$filters[self::FILTER_GROUP]] . ' ';
@@ -237,6 +235,7 @@ class Schema
 			$logical = ' AND ';
 
 		$condition = '';
+		$params = array ();
 		$pattern = '/^(.*)\|([a-z]{2,4})$/';
 		$separator = false;
 
@@ -247,7 +246,11 @@ class Schema
 
 			// Complex sub-condition group
 			if (is_array ($value) && is_numeric ($name))
-				$append = $this->build_condition ($value, $alias, '(', ')', $params);
+			{
+				list ($append_condition, $append_params) = $this->build_condition ($value, $alias, '(', ')');
+
+				$params = array_merge ($params, $append_params);
+			}
 
 			// Simple field condition
 			else
@@ -259,9 +262,13 @@ class Schema
 					$name = $match[1];
 				}
 
-				// Use equality by default
-				else
+				// Default to equality for non-null values
+				else if ($value !== null)
 					$comparer = '=';
+
+				// Default to "is" operator otherwise
+				else
+					$comparer = ' IS ';
 
 				// Build field condition
 				$column = $this->get_value ($name, $alias);
@@ -269,7 +276,7 @@ class Schema
 				if ($column === null)
 					throw new \Exception ("no valid field '$name' to filter on in schema '$this->table'");
 
-				$append = $column . ' ' . $comparer . ' ' . self::MACRO_PARAM;
+				$append_condition = $column . ' ' . $comparer . ' ' . self::MACRO_PARAM;
 				$params[] = $value;
 			}
 
@@ -277,23 +284,40 @@ class Schema
 			if ($separator)
 				$condition .= $logical;
 
-			$condition .= $append;
+			$condition .= $append_condition;
 			$separator = true;
 		}
 
 		if ($separator)
-			return $begin . $condition . $end;
+			return array ($begin . $condition . $end, $params);
 
-		return '';
+		return array ('', array ());
 	}
 
-	private function build_connection ($link, $alias, $base, &$unique)
+	private function build_filter ($filters, $alias, $begin, $end, $prefix, &$unique)
 	{
-		$params = array ();
+		if ($filters !== null)
+		{
+			list ($condition, $condition_params) = $this->build_condition ($filters, $alias, $begin, $end);
+
+			if ($condition !== '')
+			{
+				$begin = ' AND (';
+				$end = ')';
+			}
+		}
+		else
+		{
+			$condition = '';
+			$condition_params = array ();
+		}
+
+		$link = isset ($filters[self::FILTER_LINK]) ? $filters[self::FILTER_LINK] + $this->defaults : $this->defaults;
 		$relation = '';
+		$relation_params = array ();
 		$select = '';
 
-		foreach ($link + $this->defaults as $name => $children)
+		foreach ($link as $name => $children)
 		{
 			if (!isset ($this->links[$name]))
 				throw new \Exception ("missing link '$name' in schema '$this->table'");
@@ -303,7 +327,7 @@ class Schema
 			$foreign_alias = '_' . $unique++;
 
 			// Build fields selection and join to foreign table
-			$namespace = $base . $name . $this->separator;
+			$namespace = $prefix . $name . $this->separator;
 
 			if (($foreign[1] & self::LINK_OPTIONAL) === 0)
 				$type = 'INNER';
@@ -317,12 +341,12 @@ class Schema
 			$select .= ', ' . $foreign_schema->build_select ($foreign_alias, $namespace);
 
 			// Recursively merge nested fields and tables
-			$inner_link = isset ($children[self::FILTER_LINK]) ? $children[self::FILTER_LINK] : array ();
+			list ($inner_select, $inner_relation, $inner_relation_params, $inner_condition, $inner_condition_params) = $foreign_schema->build_filter ($children, $foreign_alias, $begin, $end, $namespace, $unique);
 
-			list ($inner_select, $inner_relation, $inner_params) = $foreign_schema->build_connection ($inner_link, $foreign_alias, $namespace, $unique);
-
-			$params = array_merge ($params, $inner_params);
+			$condition .= $inner_condition;
+			$condition_params = array_merge ($condition_params, $inner_condition_params);
 			$relation .= $inner_relation;
+			$relation_params = array_merge ($relation_params, $inner_relation_params);
 			$select .= $inner_select;
 
 			// Resolve relation conditions
@@ -343,7 +367,7 @@ class Schema
 					if ($children === null || !isset ($children[$parent_name]))
 						throw new \Exception ("can't map missing value '$parent_name' to '$foreign_name' in schema '$foreign_schema->table' for link '$name' in schema '$this->table'");
 
-					$params[] = $children[$parent_name];
+					$relation_params[] = $children[$parent_name];
 					$parent = self::MACRO_PARAM;
 
 					unset ($children[$parent_name]);
@@ -352,13 +376,9 @@ class Schema
 				$relation .= $logical . $foreign . ' = ' . $parent;
 				$logical = ' AND ';
 			}
-
-			// Append external conditions
-			if ($children !== null)
-				$relation .= $foreign_schema->build_condition ($children, $foreign_alias, ' AND (', ')', $params);
 		}
 
-		return array ($select, $relation, $params);
+		return array ($select, $relation, $relation_params, $condition, $condition_params);
 	}
 
 	private function build_select ($alias, $namespace)

@@ -18,7 +18,7 @@ function sql_assert_get ($schema, $filters, $expected)
 		assert (count ($expected_row) === count ($returned_row), 'Same number of fields in row #' . $i);
 
 		foreach ($expected_row as $key => $value)
-			assert (array_key_exists ($key, $returned_row) && $returned_row[$key] === $value, 'Match for key "' . $key . '" in row #' . $i);
+			assert (array_key_exists ($key, $returned_row) && $returned_row[$key] === ($value !== null ? (string)$value : null), 'Match for key "' . $key . '" in row #' . $i);
 	}
 }
 

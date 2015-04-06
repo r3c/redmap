@@ -36,7 +36,7 @@ $employee = new RedMap\Schema
 sql_connect ();
 sql_import ('../res/get_link_start.sql');
 
-// Test
+// Link with company
 sql_assert_get
 (
 	$employee,
@@ -52,45 +52,63 @@ sql_assert_get
 	)
 );
 
+// Filter by id, link with company and manager
 sql_assert_get
 (
 	$employee,
 	array ('id' => 1, '+'  => array ('company' => null, 'manager' => null)),
 	array
 	(
-		array ('id' => '1', 'name' => 'Alice', 'company__id' => '1', 'company__name' => 'Google', 'manager__id' => null, 'manager__name' => null)
+		array ('id' => 1, 'name' => 'Alice', 'company__id' => 1, 'company__name' => 'Google', 'manager__id' => null, 'manager__name' => null)
 	)
 );
 
+// Filter by id, link with manager
 sql_assert_get
 (
 	$employee,
 	array ('id' => 2, '+' => array ('manager' => null)),
 	array
 	(
-		array ('id' => '2', 'name' => 'Bob', 'manager__id' => '1', 'manager__name' => 'Alice')
+		array ('id' => 2, 'name' => 'Bob', 'manager__id' => 1, 'manager__name' => 'Alice')
 	)
 );
 
+// Link with manager, filter by missing manager
+sql_assert_get
+(
+	$employee,
+	array ('+' => array ('manager' => array ('id' => null))),
+	array
+	(
+		array ('id' => 1, 'name' => 'Alice', 'manager__id' => null, 'manager__name' => null),
+		array ('id' => 3, 'name' => 'Carol', 'manager__id' => null, 'manager__name' => null),
+		array ('id' => 5, 'name' => 'Eve', 'manager__id' => null, 'manager__name' => null),
+		array ('id' => 6, 'name' => 'Mallory', 'manager__id' => null, 'manager__name' => null)
+	)
+);
+
+// Link with company, filter by company name
 sql_assert_get
 (
 	$employee,
 	array ('+' => array ('company' => array ('name|like' => 'A%'))),
 	array
 	(
-		array ('id' => '5', 'name' => 'Eve', 'company__id' => '3', 'company__name' => 'Amazon'),
-		array ('id' => '6', 'name' => 'Mallory', 'company__id' => '4', 'company__name' => 'Apple')
+		array ('id' => 5, 'name' => 'Eve', 'company__id' => 3, 'company__name' => 'Amazon'),
+		array ('id' => 6, 'name' => 'Mallory', 'company__id' => 4, 'company__name' => 'Apple')
 	)
 );
 
+// Filter by id, link with manager and company of manager
 sql_assert_get
 (
 	$employee,
 	array ('id|in' => array (1, 2), '+' => array ('manager' => array ('+' => array ('company' => null)))),
 	array
 	(
-		array ('id' => '1', 'name' => 'Alice', 'manager__id' => null, 'manager__name' => null, 'manager__company__id' => null, 'manager__company__name' => null),
-		array ('id' => '2', 'name' => 'Bob', 'manager__id' => '1', 'manager__name' => 'Alice', 'manager__company__id' => '1', 'manager__company__name' => 'Google')
+		array ('id' => 1, 'name' => 'Alice', 'manager__id' => null, 'manager__name' => null, 'manager__company__id' => null, 'manager__company__name' => null),
+		array ('id' => 2, 'name' => 'Bob', 'manager__id' => 1, 'manager__name' => 'Alice', 'manager__company__id' => 1, 'manager__company__name' => 'Google')
 	)
 );
 

@@ -13,9 +13,9 @@ class MySQLDriver
 
 	public function connect ($user, $pass, $name, $host = '127.0.0.1', $port = 3306)
 	{
-		$this->connection = @mysql_connect ($host . ':' . $port, $user, $pass);
+		$this->connection = mysql_connect ($host . ':' . $port, $user, $pass);
 
-		if ($this->connection === false || !@mysql_select_db ($name, $this->connection))
+		if ($this->connection === false || !mysql_select_db ($name, $this->connection))
 			return false;
 
 		if ($this->charset !== null)
