@@ -27,7 +27,7 @@ class Schema
 	const SET_UPDATE = 2;
 	const SET_UPSERT = 3;
 
-	private static $comparers = array ('eq' => '=', 'ge' => '>=', 'gt' => '>', 'in' => 'IN', 'is' => 'IS', 'le' => '<=', 'like' => 'LIKE', 'lt' => '<', 'ne' => '!=');
+	private static $comparers = array ('eq' => '=', 'ge' => '>=', 'gt' => '>', 'in' => 'IN', 'is' => 'IS', 'le' => '<=', 'like' => 'LIKE', 'lt' => '<', 'ne' => '!=', 'not' => 'IS NOT');
 	private static $logicals = array ('and' => 'AND', 'or' => 'OR');
 
 	public function __construct ($table, $fields, $separator = '__', $links = array ())
