@@ -26,3 +26,14 @@ INSERT INTO `employee` (`id`, `name`, `company`, `manager`) VALUES
 (4, 'Dave', 2, 3),
 (5, 'Eve', 3, 0),
 (6, 'Mallory', 4, 0);
+
+CREATE TABLE `report` (
+  `employee` int(10) unsigned NOT NULL,
+  `day` int(10) unsigned NOT NULL,
+  `summary` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `report` (`employee`, `day`, `summary`) VALUES
+(1, 1, 'Alice''s day 1 summary'),
+(1, 2, 'Alice''s day 2 summary'),
+(1, 3, 'Alice''s day 3 summary');

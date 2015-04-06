@@ -28,7 +28,19 @@ $employee = new RedMap\Schema
 	array
 	(
 		'company'	=> array ($company, 0, array ('company' => 'id')),
-		'manager'	=> array (function () { return $GLOBALS['employee']; }, RedMap\Schema::LINK_OPTIONAL, array ('manager' => 'id'))
+		'manager'	=> array (function () { return $GLOBALS['employee']; }, RedMap\Schema::LINK_OPTIONAL, array ('manager' => 'id')),
+		'report'	=> array (function () { return $GLOBALS['report']; }, RedMap\Schema::LINK_OPTIONAL, array ('id' => 'employee', '!day' => 'day'))
+	)
+);
+
+$report = new RedMap\Schema
+(
+	'report',
+	array
+	(
+		'employee'	=> array (RedMap\Schema::FIELD_PRIMARY),
+		'day'		=> array (RedMap\Schema::FIELD_PRIMARY),
+		'summary'	=> null
 	)
 );
 
@@ -109,6 +121,17 @@ sql_assert_get
 	(
 		array ('id' => 1, 'name' => 'Alice', 'manager__id' => null, 'manager__name' => null, 'manager__company__id' => null, 'manager__company__name' => null),
 		array ('id' => 2, 'name' => 'Bob', 'manager__id' => 1, 'manager__name' => 'Alice', 'manager__company__id' => 1, 'manager__company__name' => 'Google')
+	)
+);
+
+// Filter by id, link with external report on day 2
+sql_assert_get
+(
+	$employee,
+	array ('id' => 1, '+' => array ('report' => array ('!day' => 2))),
+	array
+	(
+		array ('id' => 1, 'name' => 'Alice', 'report__employee' => 1, 'report__day' => 2, 'report__summary' => 'Alice\'s day 2 summary')
 	)
 );
 

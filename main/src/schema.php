@@ -271,7 +271,7 @@ class Schema
 					$comparer = ' IS ';
 
 				// Build field condition
-				$column = $this->get_value ($name, $alias);
+				$column = $this->get_column ($name, $alias);
 
 				if ($column === null)
 					throw new \Exception ("no valid field '$name' to filter on in schema '$this->table'");
@@ -340,42 +340,43 @@ class Schema
 
 			$select .= ', ' . $foreign_schema->build_select ($foreign_alias, $namespace);
 
+			// Resolve relation connections
+			$connect_relation = ') ON ';
+			$connect_relation_params = array ();
+			$logical = '';
+
+			foreach ($foreign[2] as $parent_name => $foreign_name)
+			{
+				$foreign_column = $foreign_schema->get_column ($foreign_name, $foreign_alias);
+
+				if ($foreign_column === null)
+					throw new \Exception ("can't map missing field '$foreign_name' in schema '$foreign_schema->table' to '$parent_name' for link '$name' in schema '$this->table'");
+
+				$parent_column = $this->get_column ($parent_name, $alias);
+
+				if ($parent_column === null)
+				{
+					if ($children === null || !isset ($children[$parent_name]))
+						throw new \Exception ("can't map missing value '$parent_name' to '$foreign_name' in schema '$foreign_schema->table' for link '$name' in schema '$this->table'");
+
+					$connect_relation_params[] = $children[$parent_name];
+					$parent_column = self::MACRO_PARAM;
+
+					unset ($children[$parent_name]);
+				}
+
+				$connect_relation .= $logical . $foreign_column . ' = ' . $parent_column;
+				$logical = ' AND ';
+			}
+
 			// Recursively merge nested fields and tables
 			list ($inner_select, $inner_relation, $inner_relation_params, $inner_condition, $inner_condition_params) = $foreign_schema->build_filter ($children, $foreign_alias, $begin, $end, $namespace, $unique);
 
 			$condition .= $inner_condition;
 			$condition_params = array_merge ($condition_params, $inner_condition_params);
-			$relation .= $inner_relation;
-			$relation_params = array_merge ($relation_params, $inner_relation_params);
+			$relation .= $inner_relation . $connect_relation;
+			$relation_params = array_merge ($relation_params, $inner_relation_params, $connect_relation_params);
 			$select .= $inner_select;
-
-			// Resolve relation conditions
-			$relation .= ') ON ';
-			$logical = '';
-
-			foreach ($foreign[2] as $parent_name => $foreign_name)
-			{
-				$foreign = $foreign_schema->get_value ($foreign_name, $foreign_alias);
-
-				if ($foreign === null)
-					throw new \Exception ("can't map missing field '$foreign_name' in schema '$foreign_schema->table' to '$parent_name' for link '$name' in schema '$this->table'");
-
-				$parent = $this->get_value ($parent_name, $alias);
-
-				if ($parent === null)
-				{
-					if ($children === null || !isset ($children[$parent_name]))
-						throw new \Exception ("can't map missing value '$parent_name' to '$foreign_name' in schema '$foreign_schema->table' for link '$name' in schema '$this->table'");
-
-					$relation_params[] = $children[$parent_name];
-					$parent = self::MACRO_PARAM;
-
-					unset ($children[$parent_name]);
-				}
-
-				$relation .= $logical . $foreign . ' = ' . $parent;
-				$logical = ' AND ';
-			}
 		}
 
 		return array ($select, $relation, $relation_params, $condition, $condition_params);
@@ -403,7 +404,7 @@ class Schema
 
 		foreach ($orders as $name => $asc)
 		{
-			$column = $this->get_value ($name, '_0');
+			$column = $this->get_column ($name, '_0');
 
 			if ($column === null)
 				throw new \Exception ("no valid field '$name' to order by in schema '$this->table'");
@@ -427,7 +428,7 @@ class Schema
 		return $match[1];
 	}
 
-	private function get_value ($name, $alias)
+	private function get_column ($name, $alias)
 	{
 		if (!isset ($this->fields[$name]))
 			return null;
