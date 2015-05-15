@@ -27,9 +27,6 @@ class Schema
 	const SET_UPDATE = 2;
 	const SET_UPSERT = 3;
 
-	private static $comparers = array ('eq' => '=', 'ge' => '>=', 'gt' => '>', 'in' => 'IN', 'is' => 'IS', 'le' => '<=', 'like' => 'LIKE', 'lt' => '<', 'ne' => '!=', 'not' => 'IS NOT');
-	private static $logicals = array ('and' => 'AND', 'or' => 'OR');
-
 	public function __construct ($table, $fields, $separator = '__', $links = array ())
 	{
 		$this->defaults = array ();
@@ -229,8 +226,33 @@ class Schema
 
 	private function build_condition ($filters, $alias, $begin, $end)
 	{
-		if (isset ($filters[self::FILTER_GROUP]) && isset (self::$logicals[$filters[self::FILTER_GROUP]]))
-			$logical = ' ' . self::$logicals[$filters[self::FILTER_GROUP]] . ' ';
+		static $comparers;
+		static $logicals;
+
+		if (!isset ($comparers))
+		{
+			$comparers = array
+			(
+				'eq'	=> array ('', ' = ' . self::MACRO_PARAM),
+				'ge'	=> array ('', ' >= ' . self::MACRO_PARAM),
+				'gt'	=> array ('', ' > ' . self::MACRO_PARAM),
+				'in'	=> array ('', ' IN ' . self::MACRO_PARAM),
+				'is'	=> array ('', ' IS ' . self::MACRO_PARAM),
+				'le'	=> array ('', ' <= ' . self::MACRO_PARAM),
+				'like'	=> array ('', ' LIKE ' . self::MACRO_PARAM),
+				'lt'	=> array ('', ' < ' . self::MACRO_PARAM),
+				'm'		=> array ('MATCH (', ') AGAINST (' . self::MACRO_PARAM . ')'),
+				'mb'	=> array ('MATCH (', ') AGAINST (' . self::MACRO_PARAM . ' IN BOOLEAN MODE)'),
+				'ne'	=> array ('', ' != ' . self::MACRO_PARAM),
+				'not'	=> array ('', ' IS NOT ' . self::MACRO_PARAM)
+			);
+		}
+
+		if (!isset ($logicals))
+			$logicals = array ('and' => 'AND', 'or' => 'OR');
+
+		if (isset ($filters[self::FILTER_GROUP]) && isset ($logicals[$filters[self::FILTER_GROUP]]))
+			$logical = ' ' . $logicals[$filters[self::FILTER_GROUP]] . ' ';
 		else
 			$logical = ' AND ';
 
@@ -256,19 +278,19 @@ class Schema
 			else
 			{
 				// Match name with custom comparison operator, e.g. "datetime|ge"
-				if (preg_match ($pattern, $name, $match) && isset (self::$comparers[$match[2]]))
+				if (preg_match ($pattern, $name, $match) && isset ($comparers[$match[2]]))
 				{
-					$comparer = self::$comparers[$match[2]];
+					$comparer = $comparers[$match[2]];
 					$name = $match[1];
 				}
 
 				// Default to equality for non-null values
 				else if ($value !== null)
-					$comparer = '=';
+					$comparer = $comparers['eq'];
 
 				// Default to "is" operator otherwise
 				else
-					$comparer = ' IS ';
+					$comparer = $comparers['is'];
 
 				// Build field condition
 				$column = $this->get_column ($name, $alias);
@@ -276,7 +298,7 @@ class Schema
 				if ($column === null)
 					throw new \Exception ("no valid field '$name' to filter on in schema '$this->table'");
 
-				$append_condition = $column . ' ' . $comparer . ' ' . self::MACRO_PARAM;
+				$append_condition = $comparer[0] . $column . $comparer[1];
 				$params[] = $value;
 			}
 
