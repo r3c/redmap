@@ -29,6 +29,7 @@ class Schema
 	const SQL_BEGIN = '`';
 	const SQL_END = '`';
 	const SQL_NEXT = ',';
+	const SQL_NOOP = 'DO 0';
 
 	public function __construct ($table, $fields, $separator = '__', $links = array ())
 	{
@@ -53,12 +54,12 @@ class Schema
 		$this->fields = $fields;
 		$this->links = $links;
 		$this->separator = $separator;
-		$this->table = $table;
+		$this->table = self::SQL_BEGIN . $table . self::SQL_END;
 	}
 
 	public function clean ()
 	{
-		return 'OPTIMIZE TABLE ' . self::SQL_BEGIN . $this->table . self::SQL_END;
+		return 'OPTIMIZE TABLE ' . $this->table;
 	}
 
 	public function copy ($mode, $pairs, $source, $filters = array (), $orders = array (), $count = null, $offset = null)
@@ -78,7 +79,7 @@ class Schema
 		}
 
 		// Generate copy query for requested mode
-		$alias = '_copy';
+		$alias = self::SQL_BEGIN . '_copy' . self::SQL_END;
 
 		switch ($mode)
 		{
@@ -98,7 +99,7 @@ class Schema
 						$source_column = $source->get_column ($origin[1], $alias);
 
 						if ($source_column === null)
-							throw new \Exception ("can't copy from '$source->table.$origin[1]', field doesn't exist");
+							throw new \Exception ("can't copy from unknown field '$source->table.$origin[1]'");
 
 						$select .= $source_column;
 					}
@@ -113,29 +114,27 @@ class Schema
 
 				return array
 				(
-					($mode === self::SET_INSERT ? 'INSERT' : 'REPLACE') . ' INTO ' . self::SQL_BEGIN . $this->table . self::SQL_END .
+					($mode === self::SET_INSERT ? 'INSERT' : 'REPLACE') . ' INTO ' . $this->table .
 					' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
 					' SELECT ' . substr ($select, strlen (self::SQL_NEXT)) . ' FROM (' . $source_query . ') ' . $alias,
 					array_merge ($params, $source_params)
 				);
 
-				break;
-
 			default:
 				throw new \Exception ("invalid mode '$mode'");
 		}
-	}	
+	}
 
 	public function delete ($filters)
 	{
-		$alias = '_0';
+		$alias = self::SQL_BEGIN . '_0' . self::SQL_END;
 
 		list ($condition, $params) = $this->build_condition ($filters, $alias, ' WHERE ', '');
 
 		return array
 		(
-			'DELETE FROM ' . self::SQL_BEGIN . $alias . self::SQL_END . ' ' .
-			'USING ' . self::SQL_BEGIN . $this->table . self::SQL_END . ' ' . self::SQL_BEGIN . $alias . self::SQL_END . $condition,
+			'DELETE FROM ' . $alias . ' ' .
+			'USING ' . $this->table . ' ' . $alias . $condition,
 			$params
 		);
 	}
@@ -143,14 +142,14 @@ class Schema
 	public function get ($filters = array (), $orders = array (), $count = null, $offset = null)
 	{
 		// Select columns from links to other schemas
-		$alias = '_0';
+		$alias = self::SQL_BEGIN . '_0' . self::SQL_END;
 		$unique = 1;
 
 		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($filters, $alias, ' WHERE ', '', '', $unique);
 
 		// Build "where", "order by" and "limit" clauses
 		$params = array_merge ($relation_params, $condition_params);
-		$sort = $this->build_sort ($orders);
+		$sort = $this->build_sort ($orders, $alias);
 
 		if ($count !== null)
 		{
@@ -165,7 +164,7 @@ class Schema
 		return array
 		(
 			'SELECT ' . $this->build_select ($alias, '') . $select .
-			' FROM ' . self::SQL_BEGIN . $this->table . self::SQL_END . ' ' . self::SQL_BEGIN . $alias . self::SQL_END .
+			' FROM ' . $this->table . ' ' . $alias .
 			$relation . $condition . $sort . $range,
 			$params
 		);
@@ -192,21 +191,14 @@ class Schema
 		{
 			case self::SET_INSERT:
 			case self::SET_REPLACE:
-				$insert = '';
-				$params = array ();
-
-				foreach (array_merge ($changes, $indices) as $column => $value)
-				{
-					$insert .= self::SQL_NEXT . $column;
-					$params[] = $value;
-				}
+				$values = array_merge ($changes, $indices);
 
 				return array
 				(
-					($mode === self::SET_INSERT ? 'INSERT' : 'REPLACE') . ' INTO ' . self::SQL_BEGIN . $this->table . self::SQL_END .
-					' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
-					' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($params), self::MACRO_PARAM)) . ')',
-					$params
+					($mode === self::SET_INSERT ? 'INSERT' : 'REPLACE') . ' INTO ' . $this->table .
+					' (' . implode (self::SQL_NEXT, array_keys ($values)) . ')' .
+					' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($values), self::MACRO_PARAM)) . ')',
+					$values
 				);
 
 			case self::SET_UPDATE:
@@ -246,7 +238,7 @@ class Schema
 
 				return array
 				(
-					'UPDATE ' . self::SQL_BEGIN . $this->table . self::SQL_END .
+					'UPDATE ' . $this->table .
 					' SET ' . substr ($update, strlen (self::SQL_NEXT)) .
 					$condition,
 					$params
@@ -256,37 +248,27 @@ class Schema
 				if (count ($changes) === 0)
 					break;
 
-				$insert = '';
-				$insert_values = array ();
 				$update = '';
-				$update_values = array ();
 
 				foreach ($changes as $column => $value)
-				{
-					$insert .= self::SQL_NEXT . $column;
-					$insert_values[] = $value;
 					$update .= self::SQL_NEXT . $column . ' = ' . self::MACRO_PARAM;
-					$update_values[] = $value;
-				}
 
-				foreach ($indices as $column => $value)
-				{
-					$insert .= self::SQL_NEXT . $column;
-					$insert_values[] = $value;
-				}
+				$values = array_merge ($changes, $indices);
 
 				return array
 				(
-					'INSERT INTO ' . self::SQL_BEGIN . $this->table . self::SQL_END .
-					' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
-					' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($insert_values), self::MACRO_PARAM)) . ')' .
+					'INSERT INTO ' . $this->table .
+					' (' . implode (self::SQL_NEXT, array_keys ($values)) . ')' .
+					' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($values), self::MACRO_PARAM)) . ')' .
 					' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT)),
-					array_merge ($insert_values, $update_values)
+					array_merge (array_values ($values), array_values ($changes))
 				);
 
 			default:
 				throw new \Exception ("invalid mode '$mode'");
 		}
+
+		return array (self::SQL_NOOP, array ());
 	}
 
 	private function build_condition ($filters, $alias, $begin, $end)
@@ -361,7 +343,7 @@ class Schema
 				$column = $this->get_column ($name, $alias);
 
 				if ($column === null)
-					throw new \Exception ("no valid field '$name' to filter on in schema '$this->table'");
+					throw new \Exception ("can't filter on unknown field '$this->table.$name'");
 
 				$append_condition = $comparer[0] . $column . $comparer[1];
 				$params[] = $value;
@@ -407,11 +389,11 @@ class Schema
 		foreach ($link as $name => $children)
 		{
 			if (!isset ($this->links[$name]))
-				throw new \Exception ("missing link '$name' in schema '$this->table'");
+				throw new \Exception ("can't link unknown relation '$name' to schema '$this->table'");
 
 			$foreign = $this->links[$name];
 			$foreign_schema = is_callable ($foreign[0]) ? $foreign[0] () : $foreign[0];
-			$foreign_alias = '_' . $unique++;
+			$foreign_alias = self::SQL_BEGIN . '_' . $unique++ . self::SQL_BEGIN;
 
 			// Build fields selection and join to foreign table
 			$namespace = $prefix . $name . $this->separator;
@@ -421,10 +403,7 @@ class Schema
 			else
 				$type = 'LEFT';
 
-			$relation .= ' ' . $type . ' JOIN (' .
-				self::SQL_BEGIN . $foreign_schema->table . self::SQL_END . ' ' .
-				self::SQL_BEGIN . $foreign_alias . self::SQL_END;
-
+			$relation .= ' ' . $type . ' JOIN (' . $foreign_schema->table . ' ' . $foreign_alias;
 			$select .= self::SQL_NEXT . $foreign_schema->build_select ($foreign_alias, $namespace);
 
 			// Resolve relation connections
@@ -437,14 +416,14 @@ class Schema
 				$foreign_column = $foreign_schema->get_column ($foreign_name, $foreign_alias);
 
 				if ($foreign_column === null)
-					throw new \Exception ("can't map missing field '$foreign_name' in schema '$foreign_schema->table' to '$parent_name' for link '$name' in schema '$this->table'");
+					throw new \Exception ("can't link unknown field '$foreign_schema->table.$foreign_name' to '$this->table.$parent_name' for relation '$name'");
 
 				$parent_column = $this->get_column ($parent_name, $alias);
 
 				if ($parent_column === null)
 				{
 					if ($children === null || !isset ($children[$parent_name]))
-						throw new \Exception ("can't map missing value '$parent_name' to '$foreign_name' in schema '$foreign_schema->table' for link '$name' in schema '$this->table'");
+						throw new \Exception ("can't link missing value '$parent_name' to '$foreign_schema->table.$foreign_name' for relation '$name' in schema '$this->table'");
 
 					$connect_relation_params[] = $children[$parent_name];
 					$parent_column = self::MACRO_PARAM;
@@ -472,7 +451,7 @@ class Schema
 	private function build_select ($alias, $namespace)
 	{
 		$columns = '';
-		$scope = self::SQL_BEGIN . $alias . self::SQL_END . '.';
+		$scope = $alias . '.';
 
 		foreach ($this->fields as $name => $field)
 		{
@@ -485,16 +464,16 @@ class Schema
 		return substr ($columns, strlen (self::SQL_NEXT));
 	}
 
-	private function build_sort ($orders)
+	private function build_sort ($orders, $alias)
 	{
 		$sort = '';
 
 		foreach ($orders as $name => $asc)
 		{
-			$column = $this->get_column ($name, '_0');
+			$column = $this->get_column ($name, $alias);
 
 			if ($column === null)
-				throw new \Exception ("no valid field '$name' to order by in schema '$this->table'");
+				throw new \Exception ("can't order by unknown field '$this->table.$name'");
 
 			$sort .= ($sort === '' ? ' ORDER BY ' : self::SQL_NEXT) . $column . ($asc ? '' : ' DESC');
 		}
@@ -507,15 +486,15 @@ class Schema
 		static $pattern;
 
 		if (!isset ($pattern))
-			$pattern = '/^[[:blank:]]*' . preg_quote (self::MACRO_SCOPE, '/') . '[[:blank:]]*' . preg_quote (self::SQL_BEGIN, '/') . '?([0-9A-Za-z_]+)' . preg_quote (self::SQL_END, '/') . '?[[:blank:]]*$/';
+			$pattern = '/^[[:blank:]]*' . preg_quote (self::MACRO_SCOPE, '/') . '[[:blank:]]*(?:' . preg_quote (self::SQL_BEGIN, '/') . ')?([0-9A-Za-z_]+)(?:' . preg_quote (self::SQL_END, '/') . ')?[[:blank:]]*$/';
 
 		if (!isset ($this->fields[$name]))
-			throw new \Exception ("no valid field '$name' to update on in schema '$this->table'");
+			throw new \Exception ("can't assign to unknown field '$this->table.$name'");
 
 		$field = $this->fields[$name];
 
 		if (!preg_match ($pattern, $field[1], $match))
-			throw new \Exception ("can't assign value to field '$name' in schema '$this->table'");
+			throw new \Exception ("can't assign to read-only field '$this->table.$name'");
 
 		return array (self::SQL_BEGIN . $match[1] . self::SQL_END, ($field[0] & self::FIELD_PRIMARY) !== 0);
 	}
@@ -525,7 +504,7 @@ class Schema
 		if (!isset ($this->fields[$name]))
 			return null;
 
-		return str_replace (self::MACRO_SCOPE, self::SQL_BEGIN . $alias . self::SQL_END . '.', $this->fields[$name][1]);
+		return str_replace (self::MACRO_SCOPE, $alias . '.', $this->fields[$name][1]);
 	}
 }
 
