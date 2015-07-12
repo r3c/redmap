@@ -10,9 +10,21 @@ $message = new RedMap\Schema
 	array
 	(
 		'id'		=> array (RedMap\Schema::FIELD_PRIMARY),
-		'author'	=> null,
+		'sender'	=> null,
+		'recipient'	=> null,
 		'text'		=> null,
 		'time'		=> null
+	)
+);
+
+$myinbox = new RedMap\Schema
+(
+	'myinbox',
+	array
+	(
+		'id'		=> array (RedMap\Schema::FIELD_PRIMARY),
+		'message'	=> null,
+		'batch'		=> null
 	)
 );
 
@@ -21,49 +33,64 @@ sql_connect ();
 sql_import ('../res/set_start.sql');
 
 // Insert
-$id = sql_assert_set ($message, RedMap\Schema::SET_INSERT, array ('author' => 1, 'text' => 'Hello, World!', 'time' => 500));
-
-sql_assert_get ($message, array ('id' => $id), array (array ('id' => (string)$id, 'author' => 1, 'text' => 'Hello, World!', 'time' => 500)));
+$id = sql_assert_execute ($message->set (RedMap\Schema::SET_INSERT, array ('sender' => 1, 'text' => 'Hello, World!', 'time' => 500)));
+sql_assert_compare ($message->get (array ('id' => $id), array ('id' => true)), array (array ('id' => $id, 'sender' => 1, 'recipient' => 0, 'text' => 'Hello, World!', 'time' => 500)));
 
 // Update missing row
-sql_assert_set ($message, RedMap\Schema::SET_UPDATE, array ('id' => $id + 1, 'author' => 42));
-
-sql_assert_get ($message, array ('id' => $id + 1), array ());
+sql_assert_execute ($message->set (RedMap\Schema::SET_UPDATE, array ('id' => $id + 1, 'sender' => 42)));
+sql_assert_compare ($message->get (array ('id' => $id + 1), array ('id' => true)), array ());
 
 // Update existing row
-sql_assert_set ($message, RedMap\Schema::SET_UPDATE, array ('id' => $id, 'author' => 42, 'text' => 'Updated'));
-
-sql_assert_get ($message, array ('id' => $id), array (array ('id' => (string)$id, 'author' => 42, 'text' => 'Updated', 'time' => 500)));
+sql_assert_execute ($message->set (RedMap\Schema::SET_UPDATE, array ('id' => $id, 'sender' => 42, 'text' => 'Updated')));
+sql_assert_compare ($message->get (array ('id' => $id), array ('id' => true)), array (array ('id' => $id, 'sender' => 42, 'recipient' => 0, 'text' => 'Updated', 'time' => 500)));
 
 // Update with positive increment
-sql_assert_set ($message, RedMap\Schema::SET_UPDATE, array ('id' => $id, 'author' => new RedMap\Increment (1)));
-
-sql_assert_get ($message, array ('id' => $id), array (array ('id' => (string)$id, 'author' => 43, 'text' => 'Updated', 'time' => 500)));
+sql_assert_execute ($message->set (RedMap\Schema::SET_UPDATE, array ('id' => $id, 'time' => new RedMap\Increment (100))));
+sql_assert_compare ($message->get (array ('id' => $id), array ('id' => true)), array (array ('id' => $id, 'sender' => 42, 'recipient' => 0, 'time' => 42, 'text' => 'Updated', 'time' => 600)));
 
 // Update with negative increment
-sql_assert_set ($message, RedMap\Schema::SET_UPDATE, array ('id' => $id, 'author' => new RedMap\Increment (-7)));
-
-sql_assert_get ($message, array ('id' => $id), array (array ('id' => (string)$id, 'author' => 36, 'text' => 'Updated', 'time' => 500)));
+sql_assert_execute ($message->set (RedMap\Schema::SET_UPDATE, array ('id' => $id, 'time' => new RedMap\Increment (-200))));
+sql_assert_compare ($message->get (array ('id' => $id), array ('id' => true)), array (array ('id' => $id, 'sender' => 42, 'recipient' => 0, 'text' => 'Updated', 'time' => 400)));
 
 // Upsert existing row
-sql_assert_set ($message, RedMap\Schema::SET_UPSERT, array ('id' => $id, 'author' => 17));
-
-sql_assert_get ($message, array ('id' => $id), array (array ('id' => (string)$id, 'author' => 17, 'text' => 'Updated', 'time' => 500)));
+sql_assert_execute ($message->set (RedMap\Schema::SET_UPSERT, array ('id' => $id, 'sender' => 42, 'text' => 'Upserted')));
+sql_assert_compare ($message->get (array ('id' => $id), array ('id' => true)), array (array ('id' => $id, 'sender' => 42, 'recipient' => 0, 'text' => 'Upserted', 'time' => 400)));
 
 // Upsert missing row
-sql_assert_set ($message, RedMap\Schema::SET_UPSERT, array ('id' => $id + 1, 'author' => 53));
-
-sql_assert_get ($message, array ('id' => $id + 1), array (array ('id' => (string)($id + 1), 'author' => 53, 'text' => '', 'time' => 0)));
+sql_assert_execute ($message->set (RedMap\Schema::SET_UPSERT, array ('id' => $id + 1, 'sender' => 53, 'recipient' => 8, 'text' => 'Upserted too')));
+sql_assert_compare ($message->get (array ('id' => $id + 1), array ('id' => true)), array (array ('id' => $id + 1, 'sender' => 53, 'recipient' => 8, 'text' => 'Upserted too', 'time' => 0)));
 
 // Replace existing row
-sql_assert_set ($message, RedMap\Schema::SET_REPLACE, array ('id' => $id, 'author' => 1));
-
-sql_assert_get ($message, array ('id' => $id), array (array ('id' => (string)$id, 'author' => 1, 'text' => '', 'time' => 0)));
+sql_assert_execute ($message->set (RedMap\Schema::SET_REPLACE, array ('id' => $id, 'sender' => 1, 'recipient' => 9)));
+sql_assert_compare ($message->get (array ('id' => $id), array ('id' => true)), array (array ('id' => $id, 'sender' => 1, 'recipient' => 9, 'text' => '', 'time' => 0)));
 
 // Replace missing row
-sql_assert_set ($message, RedMap\Schema::SET_REPLACE, array ('id' => $id + 2, 'author' => 2));
+sql_assert_execute ($message->set (RedMap\Schema::SET_REPLACE, array ('id' => $id + 2, 'sender' => 2, 'recipient' => 9)));
+sql_assert_compare ($message->get (array ('id' => $id + 2), array ('id' => true)), array (array ('id' => $id + 2, 'sender' => 2, 'recipient' => 9, 'text' => '', 'time' => 0)));
 
-sql_assert_get ($message, array ('id' => $id + 2), array (array ('id' => (string)($id + 2), 'author' => 2, 'text' => '', 'time' => 0)));
+// Copy
+sql_assert_execute ($myinbox->copy
+(
+	RedMap\Schema::SET_INSERT,
+	array
+	(
+		'message'	=> array (RedMap\Schema::COPY_FIELD, 'id'),
+		'batch'		=> array (RedMap\Schema::COPY_VALUE, 80)
+	),
+	$message,
+	array ('recipient' => 9),
+	array ('id' => false)
+));
+
+sql_assert_compare
+(
+	$myinbox->get (array (), array ('id' => true)),
+	array
+	(
+		array ('id' => 1, 'message' => $id + 2, 'batch' => 80),
+		array ('id' => 2, 'message' => $id, 'batch' => 80)
+	)
+);
 
 // Stop
 sql_import ('../res/set_stop.sql');

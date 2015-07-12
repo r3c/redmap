@@ -20,10 +20,9 @@ sql_connect ();
 sql_import ('../res/get_comparer_start.sql');
 
 // Get with default 'equal' comparer
-sql_assert_get
+sql_assert_compare
 (
-	$book,
-	array ('id' => 1),
+	$book->get (array ('id' => 1), array ('id' => true)),
 	array
 	(
 		array ('id' => '1', 'name' => 'My First Book', 'year' => '2001')
@@ -31,10 +30,9 @@ sql_assert_get
 );
 
 // Get with default 'is' comparer
-sql_assert_get
+sql_assert_compare
 (
-	$book,
-	array ('year' => null),
+	$book->get (array ('year' => null), array ('id' => true)),
 	array
 	(
 		array ('id' => '4', 'name' => 'Unknown Book', 'year' => null)
@@ -42,10 +40,9 @@ sql_assert_get
 );
 
 // Greater or equal
-sql_assert_get
+sql_assert_compare
 (
-	$book,
-	array ('id|ge' => 3),
+	$book->get (array ('id|ge' => 3), array ('id' => true)),
 	array
 	(
 		array ('id' => '3', 'name' => 'A Third Book', 'year' => 2003),
@@ -54,10 +51,9 @@ sql_assert_get
 );
 
 // Greater than
-sql_assert_get
+sql_assert_compare
 (
-	$book,
-	array ('id|gt' => 3),
+	$book->get (array ('id|gt' => 3), array ('id' => true)),
 	array
 	(
 		array ('id' => '4', 'name' => 'Unknown Book', 'year' => null)
@@ -65,10 +61,9 @@ sql_assert_get
 );
 
 // Lower or equal
-sql_assert_get
+sql_assert_compare
 (
-	$book,
-	array ('id|le' => 2),
+	$book->get (array ('id|le' => 2), array ('id' => true)),
 	array
 	(
 		array ('id' => '1', 'name' => 'My First Book', 'year' => 2001),
@@ -77,10 +72,9 @@ sql_assert_get
 );
 
 // Greater than
-sql_assert_get
+sql_assert_compare
 (
-	$book,
-	array ('id|lt' => 2),
+	$book->get (array ('id|lt' => 2), array ('id' => true)),
 	array
 	(
 		array ('id' => '1', 'name' => 'My First Book', 'year' => 2001)
@@ -88,10 +82,9 @@ sql_assert_get
 );
 
 // Like
-sql_assert_get
+sql_assert_compare
 (
-	$book,
-	array ('name|like' => 'Unknown%'),
+	$book->get (array ('name|like' => 'Unknown%'), array ('id' => true)),
 	array
 	(
 		array ('id' => '4', 'name' => 'Unknown Book', 'year' => null)
@@ -99,10 +92,9 @@ sql_assert_get
 );
 
 // Match boolean
-sql_assert_get
+sql_assert_compare
 (
-	$book,
-	array ('name|mb' => 'boo*'),
+	$book->get (array ('name|mb' => 'boo*'), array ('id' => true)),
 	array
 	(
 		array ('id' => '1', 'name' => 'My First Book', 'year' => 2001),

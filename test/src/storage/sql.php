@@ -1,10 +1,10 @@
 <?php
 
-function sql_assert_get ($schema, $filters, $expected)
+function sql_assert_compare ($pair, $expected)
 {
 	global $driver;
 
-	list ($query, $params) = $schema->get ($filters, array ('id' => true));
+	list ($query, $params) = $pair;
 
 	$returned = $driver->get_rows ($query, $params);
 
@@ -22,11 +22,11 @@ function sql_assert_get ($schema, $filters, $expected)
 	}
 }
 
-function sql_assert_set ($schema, $mode, $fields)
+function sql_assert_execute ($pair)
 {
 	global $driver;
 
-	list ($query, $params) = $schema->set ($mode, $fields);
+	list ($query, $params) = $pair;
 
 	$result = $driver->execute ($query, $params);
 

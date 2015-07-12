@@ -12,8 +12,8 @@ class Increment
 
 class Schema
 {
-	const ESCAPE_BEGIN = '`';
-	const ESCAPE_END = '`';
+	const COPY_FIELD = 0;
+	const COPY_VALUE = 1;
 	const FIELD_INTERNAL = 1;
 	const FIELD_PRIMARY = 2;
 	const FILTER_GROUP = '~';
@@ -26,6 +26,9 @@ class Schema
 	const SET_REPLACE = 1;
 	const SET_UPDATE = 2;
 	const SET_UPSERT = 3;
+	const SQL_BEGIN = '`';
+	const SQL_END = '`';
+	const SQL_NEXT = ',';
 
 	public function __construct ($table, $fields, $separator = '__', $links = array ())
 	{
@@ -34,11 +37,11 @@ class Schema
 		foreach ($fields as $name => &$field)
 		{
 			if ($field === null)
-				$field = array (0, self::MACRO_SCOPE . self::ESCAPE_BEGIN . $name . self::ESCAPE_END);
+				$field = array (0, self::MACRO_SCOPE . self::SQL_BEGIN . $name . self::SQL_END);
 			else if (is_string ($field))
 				$field = array (0, $field);
 			else if (!isset ($field[1]))
-				$field[1] = self::MACRO_SCOPE . self::ESCAPE_BEGIN . $name . self::ESCAPE_END;
+				$field[1] = self::MACRO_SCOPE . self::SQL_BEGIN . $name . self::SQL_END;
 		}
 
 		foreach ($links as $name => &$link)
@@ -55,8 +58,73 @@ class Schema
 
 	public function clean ()
 	{
-		return 'OPTIMIZE TABLE ' . self::ESCAPE_BEGIN . $this->table . self::ESCAPE_END;
+		return 'OPTIMIZE TABLE ' . self::SQL_BEGIN . $this->table . self::SQL_END;
 	}
+
+	public function copy ($mode, $pairs, $source, $filters = array (), $orders = array (), $count = null, $offset = null)
+	{
+		// Extract source and target fields from both schemas
+		$changes = array ();
+		$indices = array ();
+
+		foreach ($pairs as $name => $origin)
+		{
+			list ($column, $primary) = $this->get_assignment ($name);
+
+			if ($primary)
+				$indices[$column] = $origin;
+			else
+				$changes[$column] = $origin;
+		}
+
+		// Generate copy query for requested mode
+		$alias = '_copy';
+
+		switch ($mode)
+		{
+			case self::SET_INSERT:
+			case self::SET_REPLACE:
+				$insert = '';
+				$params = array ();
+				$select = '';
+
+				foreach (array_merge ($changes, $indices) as $column => $origin)
+				{
+					$insert .= self::SQL_NEXT . $column;
+					$select .= self::SQL_NEXT;
+
+					if ($origin[0] === self::COPY_FIELD)
+					{
+						$source_column = $source->get_column ($origin[1], $alias);
+
+						if ($source_column === null)
+							throw new \Exception ("can't copy from '$source->table.$origin[1]', field doesn't exist");
+
+						$select .= $source_column;
+					}
+					else
+					{
+						$params[] = $origin[1];
+						$select .= self::MACRO_PARAM;
+					}
+				}
+
+				list ($source_query, $source_params) = $source->get ($filters, $orders, $count, $offset);
+
+				return array
+				(
+					($mode === self::SET_INSERT ? 'INSERT' : 'REPLACE') . ' INTO ' . self::SQL_BEGIN . $this->table . self::SQL_END .
+					' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
+					' SELECT ' . substr ($select, strlen (self::SQL_NEXT)) . ' FROM (' . $source_query . ') ' . $alias,
+					array_merge ($params, $source_params)
+				);
+
+				break;
+
+			default:
+				throw new \Exception ("invalid mode '$mode'");
+		}
+	}	
 
 	public function delete ($filters)
 	{
@@ -66,8 +134,8 @@ class Schema
 
 		return array
 		(
-			'DELETE FROM ' . self::ESCAPE_BEGIN . $alias . self::ESCAPE_END . ' ' .
-			'USING ' . self::ESCAPE_BEGIN . $this->table . self::ESCAPE_END . ' ' . self::ESCAPE_BEGIN . $alias . self::ESCAPE_END . $condition,
+			'DELETE FROM ' . self::SQL_BEGIN . $alias . self::SQL_END . ' ' .
+			'USING ' . self::SQL_BEGIN . $this->table . self::SQL_END . ' ' . self::SQL_BEGIN . $alias . self::SQL_END . $condition,
 			$params
 		);
 	}
@@ -89,7 +157,7 @@ class Schema
 			$params[] = $offset !== null ? (int)$offset : 0;
 			$params[] = (int)$count;
 
-			$range = ' LIMIT ' . self::MACRO_PARAM . ', ' . self::MACRO_PARAM;
+			$range = ' LIMIT ' . self::MACRO_PARAM . self::SQL_NEXT . self::MACRO_PARAM;
 		}
 		else
 			$range = '';
@@ -97,7 +165,7 @@ class Schema
 		return array
 		(
 			'SELECT ' . $this->build_select ($alias, '') . $select .
-			' FROM ' . self::ESCAPE_BEGIN . $this->table . self::ESCAPE_END . ' ' . self::ESCAPE_BEGIN . $alias . self::ESCAPE_END .
+			' FROM ' . self::SQL_BEGIN . $this->table . self::SQL_END . ' ' . self::SQL_BEGIN . $alias . self::SQL_END .
 			$relation . $condition . $sort . $range,
 			$params
 		);
@@ -105,22 +173,18 @@ class Schema
 
 	public function set ($mode, $pairs)
 	{
+		// Extract primary values (indices) and changeable values (changes)
 		$changes = array ();
 		$indices = array ();
 
-		// Extract primary values (indices) and changeable values (changes)
 		foreach ($pairs as $name => $value)
 		{
-			if (!isset ($this->fields[$name]))
-				throw new \Exception ("no valid field '$name' to update on in schema '$this->table'");
+			list ($column, $primary) = $this->get_assignment ($name);
 
-			$field = $this->fields[$name];
-			$column = $this->get_assignment ($name, $field);
-
-			if (($field[0] & self::FIELD_PRIMARY) === 0)
-				$changes[$column] = $value;
-			else
+			if ($primary)
 				$indices[$column] = $value;
+			else
+				$changes[$column] = $value;
 		}
 
 		// Generate set query for requested mode
@@ -129,20 +193,20 @@ class Schema
 			case self::SET_INSERT:
 			case self::SET_REPLACE:
 				$insert = '';
-				$values = array ();
+				$params = array ();
 
 				foreach (array_merge ($changes, $indices) as $column => $value)
 				{
-					$insert .= ', ' . self::ESCAPE_BEGIN . $column . self::ESCAPE_END;
-					$values[] = $value;
+					$insert .= self::SQL_NEXT . $column;
+					$params[] = $value;
 				}
 
 				return array
 				(
-					($mode === self::SET_INSERT ? 'INSERT' : 'REPLACE') . ' INTO ' . self::ESCAPE_BEGIN . $this->table . self::ESCAPE_END .
-					' (' . substr ($insert, 2) . ')' .
-					' VALUES (' . implode (', ', array_fill (0, count ($values), self::MACRO_PARAM)) . ')',
-					$values
+					($mode === self::SET_INSERT ? 'INSERT' : 'REPLACE') . ' INTO ' . self::SQL_BEGIN . $this->table . self::SQL_END .
+					' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
+					' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($params), self::MACRO_PARAM)) . ')',
+					$params
 				);
 
 			case self::SET_UPDATE:
@@ -150,21 +214,21 @@ class Schema
 					break;
 
 				$update = '';
-				$values = array ();
+				$params = array ();
 
 				foreach ($changes as $column => $value)
 				{
-					$update .= ', ' . self::ESCAPE_BEGIN . $column . self::ESCAPE_END . ' = ';
+					$update .= self::SQL_NEXT . $column . ' = ';
 
 					if ($value instanceof Increment)
 					{
-						$update .= self::ESCAPE_BEGIN . $column . self::ESCAPE_END . ' + ' . self::MACRO_PARAM;
+						$update .= $column . ' + ' . self::MACRO_PARAM;
 						$value = $value->delta;
 					}
 					else
 						$update .= self::MACRO_PARAM;
 
-					$values[] = $value;
+					$params[] = $value;
 				}
 
 				$condition = '';
@@ -176,16 +240,16 @@ class Schema
 					else
 						$condition .= ' WHERE ';
 
-					$condition .= self::ESCAPE_BEGIN . $column . self::ESCAPE_END . ' = ' . self::MACRO_PARAM;
-					$values[] = $value;
+					$condition .= $column . ' = ' . self::MACRO_PARAM;
+					$params[] = $value;
 				}
 
 				return array
 				(
-					'UPDATE ' . self::ESCAPE_BEGIN . $this->table . self::ESCAPE_END .
-					' SET ' . substr ($update, 2) .
+					'UPDATE ' . self::SQL_BEGIN . $this->table . self::SQL_END .
+					' SET ' . substr ($update, strlen (self::SQL_NEXT)) .
 					$condition,
-					$values
+					$params
 				);
 
 			case self::SET_UPSERT:
@@ -199,29 +263,30 @@ class Schema
 
 				foreach ($changes as $column => $value)
 				{
-					$insert .= ', ' . self::ESCAPE_BEGIN . $column . self::ESCAPE_END;
+					$insert .= self::SQL_NEXT . $column;
 					$insert_values[] = $value;
-					$update .= ', ' . self::ESCAPE_BEGIN . $column . self::ESCAPE_END . ' = ' . self::MACRO_PARAM;
+					$update .= self::SQL_NEXT . $column . ' = ' . self::MACRO_PARAM;
 					$update_values[] = $value;
 				}
 
 				foreach ($indices as $column => $value)
 				{
-					$insert .= ', ' . self::ESCAPE_BEGIN . $column . self::ESCAPE_END;
+					$insert .= self::SQL_NEXT . $column;
 					$insert_values[] = $value;
 				}
 
 				return array
 				(
-					'INSERT INTO ' . self::ESCAPE_BEGIN . $this->table . self::ESCAPE_END .
-					' (' . substr ($insert, 2) . ')' .
-					' VALUES (' . implode (', ', array_fill (0, count ($insert_values), self::MACRO_PARAM)) . ')' .
-					' ON DUPLICATE KEY UPDATE ' . substr ($update, 2),
+					'INSERT INTO ' . self::SQL_BEGIN . $this->table . self::SQL_END .
+					' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
+					' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($insert_values), self::MACRO_PARAM)) . ')' .
+					' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT)),
 					array_merge ($insert_values, $update_values)
 				);
-		}
 
-		return array ('SELECT NULL', array ());
+			default:
+				throw new \Exception ("invalid mode '$mode'");
+		}
 	}
 
 	private function build_condition ($filters, $alias, $begin, $end)
@@ -357,10 +422,10 @@ class Schema
 				$type = 'LEFT';
 
 			$relation .= ' ' . $type . ' JOIN (' .
-				self::ESCAPE_BEGIN . $foreign_schema->table . self::ESCAPE_END . ' ' .
-				self::ESCAPE_BEGIN . $foreign_alias . self::ESCAPE_END;
+				self::SQL_BEGIN . $foreign_schema->table . self::SQL_END . ' ' .
+				self::SQL_BEGIN . $foreign_alias . self::SQL_END;
 
-			$select .= ', ' . $foreign_schema->build_select ($foreign_alias, $namespace);
+			$select .= self::SQL_NEXT . $foreign_schema->build_select ($foreign_alias, $namespace);
 
 			// Resolve relation connections
 			$connect_relation = ') ON ';
@@ -407,17 +472,17 @@ class Schema
 	private function build_select ($alias, $namespace)
 	{
 		$columns = '';
-		$scope = self::ESCAPE_BEGIN . $alias . self::ESCAPE_END . '.';
+		$scope = self::SQL_BEGIN . $alias . self::SQL_END . '.';
 
 		foreach ($this->fields as $name => $field)
 		{
 			if (($field[0] & self::FIELD_INTERNAL) !== 0)
 				continue;
 
-			$columns .= ', ' . str_replace (self::MACRO_SCOPE, $scope, $field[1]) . ' ' . self::ESCAPE_BEGIN . $namespace . $name . self::ESCAPE_END;
+			$columns .= self::SQL_NEXT . str_replace (self::MACRO_SCOPE, $scope, $field[1]) . ' ' . self::SQL_BEGIN . $namespace . $name . self::SQL_END;
 		}
 
-		return substr ($columns, 2);
+		return substr ($columns, strlen (self::SQL_NEXT));
 	}
 
 	private function build_sort ($orders)
@@ -431,23 +496,28 @@ class Schema
 			if ($column === null)
 				throw new \Exception ("no valid field '$name' to order by in schema '$this->table'");
 
-			$sort .= ($sort === '' ? ' ORDER BY ' : ', ') . $column . ($asc ? '' : ' DESC');
+			$sort .= ($sort === '' ? ' ORDER BY ' : self::SQL_NEXT) . $column . ($asc ? '' : ' DESC');
 		}
 
 		return $sort;
 	}
 
-	private function get_assignment ($name, $field)
+	private function get_assignment ($name)
 	{
 		static $pattern;
 
 		if (!isset ($pattern))
-			$pattern = '/^[[:blank:]]*' . preg_quote (self::MACRO_SCOPE, '/') . '[[:blank:]]*' . preg_quote (self::ESCAPE_BEGIN, '/') . '?([0-9A-Za-z_]+)' . preg_quote (self::ESCAPE_END, '/') . '?[[:blank:]]*$/';
+			$pattern = '/^[[:blank:]]*' . preg_quote (self::MACRO_SCOPE, '/') . '[[:blank:]]*' . preg_quote (self::SQL_BEGIN, '/') . '?([0-9A-Za-z_]+)' . preg_quote (self::SQL_END, '/') . '?[[:blank:]]*$/';
+
+		if (!isset ($this->fields[$name]))
+			throw new \Exception ("no valid field '$name' to update on in schema '$this->table'");
+
+		$field = $this->fields[$name];
 
 		if (!preg_match ($pattern, $field[1], $match))
 			throw new \Exception ("can't assign value to field '$name' in schema '$this->table'");
 
-		return $match[1];
+		return array (self::SQL_BEGIN . $match[1] . self::SQL_END, ($field[0] & self::FIELD_PRIMARY) !== 0);
 	}
 
 	private function get_column ($name, $alias)
@@ -455,7 +525,7 @@ class Schema
 		if (!isset ($this->fields[$name]))
 			return null;
 
-		return str_replace (self::MACRO_SCOPE, self::ESCAPE_BEGIN . $alias . self::ESCAPE_END . '.', $this->fields[$name][1]);
+		return str_replace (self::MACRO_SCOPE, self::SQL_BEGIN . $alias . self::SQL_END . '.', $this->fields[$name][1]);
 	}
 }
 
