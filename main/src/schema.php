@@ -12,8 +12,9 @@ class Increment
 
 class Schema
 {
-	const COPY_FIELD = 0;
-	const COPY_VALUE = 1;
+	const COPY_EXPRESSION = 0;
+	const COPY_FIELD = 1;
+	const COPY_VALUE = 2;
 	const FIELD_INTERNAL = 1;
 	const FIELD_PRIMARY = 2;
 	const FILTER_GROUP = '~';
@@ -64,60 +65,77 @@ class Schema
 
 	public function copy ($mode, $pairs, $source, $filters = array (), $orders = array (), $count = null, $offset = null)
 	{
-		// Extract source and target fields from both schemas
+		$alias = self::SQL_BEGIN . '_src' . self::SQL_END;
+		$scope = $alias . '.';
+
+		// Extract target fields from input pairs
 		$changes = array ();
+		$changes_params = array ();
 		$indices = array ();
+		$indices_params = array ();
 
 		foreach ($pairs as $name => $origin)
 		{
 			list ($column, $primary) = $this->get_assignment ($name);
 
-			if ($primary)
-				$indices[$column] = $origin;
+			if ($origin[0] === self::COPY_EXPRESSION)
+				$select = str_replace (self::MACRO_SCOPE, $scope, $origin[1]);
+			else if ($origin[0] === self::COPY_FIELD)
+			{
+				$source_column = $source->get_column ($origin[1], $alias);
+
+				if ($source_column === null)
+					throw new \Exception ("can't copy from unknown field '$source->table.$origin[1]'");
+
+				$select = $source_column;
+			}
 			else
-				$changes[$column] = $origin;
+			{
+				if ($primary)
+					$indices_params[] = $origin[1];
+				else
+					$changes_params[] = $origin[1];
+
+				$select = self::MACRO_PARAM;
+			}
+
+			if ($primary)
+				$indices[$column] = $select;
+			else
+				$changes[$column] = $select;
 		}
 
 		// Generate copy query for requested mode
-		$alias = self::SQL_BEGIN . '_copy' . self::SQL_END;
-
 		switch ($mode)
 		{
 			case self::SET_INSERT:
 			case self::SET_REPLACE:
-				$insert = '';
-				$params = array ();
-				$select = '';
-
-				foreach (array_merge ($changes, $indices) as $column => $origin)
+			case self::SET_UPSERT:
+				if ($mode === self::SET_UPSERT && count ($changes) > 0)
 				{
-					$insert .= self::SQL_NEXT . $column;
-					$select .= self::SQL_NEXT;
+					$update = '';
 
-					if ($origin[0] === self::COPY_FIELD)
-					{
-						$source_column = $source->get_column ($origin[1], $alias);
+					foreach ($changes as $column => $select)
+						$update .= self::SQL_NEXT . $column . ' = ' . $select;
 
-						if ($source_column === null)
-							throw new \Exception ("can't copy from unknown field '$source->table.$origin[1]'");
-
-						$select .= $source_column;
-					}
-					else
-					{
-						$params[] = $origin[1];
-						$select .= self::MACRO_PARAM;
-					}
+					$update = ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT));
+					$update_params = $changes_params;
+				}
+				else
+				{
+					$update = '';
+					$update_params = array ();
 				}
 
 				list ($source_query, $source_params) = $source->get ($filters, $orders, $count, $offset);
 
 				return array
 				(
-					($mode === self::SET_INSERT ? 'INSERT' : 'REPLACE') . ' INTO ' . $this->table .
-					' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
-					' SELECT ' . substr ($select, strlen (self::SQL_NEXT)) . ' FROM (' . $source_query . ') ' . $alias,
-					array_merge ($params, $source_params)
+					($mode === self::SET_REPLACE ? 'REPLACE' : 'INSERT') . ' INTO ' . $this->table .
+					' (' . implode (self::SQL_NEXT, array_merge (array_keys ($indices), array_keys ($changes))) . ')' .
+					' SELECT ' . implode (self::SQL_NEXT, array_merge ($indices, $changes)) . ' FROM (' . $source_query . ') ' . $alias .
+					$update,
+					array_merge ($indices_params, $changes_params, $source_params, $update_params)
 				);
 
 			default:
@@ -191,14 +209,32 @@ class Schema
 		{
 			case self::SET_INSERT:
 			case self::SET_REPLACE:
-				$values = array_merge ($changes, $indices);
+			case self::SET_UPSERT:
+				if ($mode === self::SET_UPSERT && count ($changes) > 0)
+				{
+					$update = '';
+
+					foreach ($changes as $column => $value)
+						$update .= self::SQL_NEXT . $column . ' = ' . self::MACRO_PARAM;
+
+					$update = ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT));
+					$update_params = $changes;
+				}
+				else
+				{
+					$update = '';
+					$update_params = array ();
+				}
+
+				$insert_params = array_merge ($changes, $indices);
 
 				return array
 				(
-					($mode === self::SET_INSERT ? 'INSERT' : 'REPLACE') . ' INTO ' . $this->table .
-					' (' . implode (self::SQL_NEXT, array_keys ($values)) . ')' .
-					' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($values), self::MACRO_PARAM)) . ')',
-					$values
+					($mode === self::SET_REPLACE ? 'REPLACE' : 'INSERT') . ' INTO ' . $this->table .
+					' (' . implode (self::SQL_NEXT, array_keys ($insert_params)) . ')' .
+					' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($insert_params), self::MACRO_PARAM)) . ')' .
+					$update,
+					array_merge (array_values ($insert_params), array_values ($update_params))
 				);
 
 			case self::SET_UPDATE:
@@ -242,26 +278,6 @@ class Schema
 					' SET ' . substr ($update, strlen (self::SQL_NEXT)) .
 					$condition,
 					$params
-				);
-
-			case self::SET_UPSERT:
-				if (count ($changes) === 0)
-					break;
-
-				$update = '';
-
-				foreach ($changes as $column => $value)
-					$update .= self::SQL_NEXT . $column . ' = ' . self::MACRO_PARAM;
-
-				$values = array_merge ($changes, $indices);
-
-				return array
-				(
-					'INSERT INTO ' . $this->table .
-					' (' . implode (self::SQL_NEXT, array_keys ($values)) . ')' .
-					' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($values), self::MACRO_PARAM)) . ')' .
-					' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT)),
-					array_merge (array_values ($values), array_values ($changes))
 				);
 
 			default:

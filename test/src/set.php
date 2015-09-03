@@ -68,30 +68,6 @@ sql_assert_compare ($message->get (array ('id' => $id), array ('id' => true)), a
 sql_assert_execute ($message->set (RedMap\Schema::SET_REPLACE, array ('id' => $id + 2, 'sender' => 2, 'recipient' => 9)));
 sql_assert_compare ($message->get (array ('id' => $id + 2), array ('id' => true)), array (array ('id' => $id + 2, 'sender' => 2, 'recipient' => 9, 'text' => '', 'time' => 0)));
 
-// Copy
-sql_assert_execute ($myinbox->copy
-(
-	RedMap\Schema::SET_INSERT,
-	array
-	(
-		'message'	=> array (RedMap\Schema::COPY_FIELD, 'id'),
-		'batch'		=> array (RedMap\Schema::COPY_VALUE, 80)
-	),
-	$message,
-	array ('recipient' => 9),
-	array ('id' => false)
-));
-
-sql_assert_compare
-(
-	$myinbox->get (array (), array ('id' => true)),
-	array
-	(
-		array ('id' => 1, 'message' => $id + 2, 'batch' => 80),
-		array ('id' => 2, 'message' => $id, 'batch' => 80)
-	)
-);
-
 // Stop
 sql_import ('../res/set_stop.sql');
 
