@@ -432,14 +432,14 @@ class Schema
 				$foreign_column = $foreign_schema->get_column ($foreign_name, $foreign_alias);
 
 				if ($foreign_column === null)
-					throw new \Exception ("can't link unknown field '$foreign_schema->table.$foreign_name' to '$this->table.$parent_name' for relation '$name'");
+					throw new \Exception ("can't link unknown field $foreign_schema->table.$foreign_name to $this->table.$parent_name for relation '$name'");
 
 				$parent_column = $this->get_column ($parent_name, $alias);
 
 				if ($parent_column === null)
 				{
 					if ($children === null || !isset ($children[$parent_name]))
-						throw new \Exception ("can't link missing value '$parent_name' to '$foreign_schema->table.$foreign_name' for relation '$name' in schema '$this->table'");
+						throw new \Exception ("can't link missing value '$parent_name' to $foreign_schema->table.$foreign_name for relation '$name' in schema $this->table");
 
 					$connect_relation_params[] = $children[$parent_name];
 					$parent_column = self::MACRO_PARAM;
