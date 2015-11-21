@@ -321,7 +321,7 @@ class Schema
 
 		$condition = '';
 		$params = array ();
-		$pattern = '/^(.*)\|([a-z]{2,4})$/';
+		$pattern = '/^(.*)\|([a-z]{1,4})$/';
 		$separator = false;
 
 		foreach ($filters as $name => $value)
