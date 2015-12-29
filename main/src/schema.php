@@ -12,6 +12,8 @@ class Increment
 
 class Schema
 {
+	const CLEAN_OPTIMIZE = 0;
+	const CLEAN_TRUNCATE = 1;
 	const COPY_EXPRESSION = 0;
 	const COPY_FIELD = 1;
 	const COPY_VALUE = 2;
@@ -30,7 +32,6 @@ class Schema
 	const SQL_BEGIN = '`';
 	const SQL_END = '`';
 	const SQL_NEXT = ',';
-	const SQL_NOOP = 'DO 0';
 
 	public function __construct ($table, $fields, $separator = '__', $links = array ())
 	{
@@ -58,9 +59,25 @@ class Schema
 		$this->table = self::SQL_BEGIN . $table . self::SQL_END;
 	}
 
-	public function clean ()
+	public function clean ($mode)
 	{
-		return 'OPTIMIZE TABLE ' . $this->table;
+		switch ($mode)
+		{
+			case self::CLEAN_OPTIMIZE:
+				$verb = 'OPTIMIZE';
+
+				break;
+
+			case self::CLEAN_TRUNCATE:
+				$verb = 'TRUNCATE';
+
+				break;
+
+			default:
+				throw new \Exception ("invalid mode '$mode'");
+		}
+
+		return array ($verb . ' TABLE ' . $this->table, array ());
 	}
 
 	public function copy ($mode, $pairs, $source, $filters = array (), $orders = array (), $count = null, $offset = null)
@@ -283,8 +300,6 @@ class Schema
 			default:
 				throw new \Exception ("invalid mode '$mode'");
 		}
-
-		return array (self::SQL_NOOP, array ());
 	}
 
 	private function build_condition ($filters, $alias, $begin, $end)

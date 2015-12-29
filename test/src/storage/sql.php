@@ -8,6 +8,7 @@ function sql_assert_compare ($pair, $expected)
 
 	$returned = $driver->get_rows ($query, $params);
 
+	assert ($returned !== null, 'Get query failed');
 	assert (count ($expected) === count ($returned), 'Same number of returned rows');
 
 	for ($i = 0; $i < count ($expected); ++$i)
@@ -30,7 +31,7 @@ function sql_assert_execute ($pair)
 
 	$result = $driver->execute ($query, $params);
 
-	assert ($result !== null, 'Set query execution');
+	assert ($result !== null, 'Execute query execution');
 
 	return $result;
 }
