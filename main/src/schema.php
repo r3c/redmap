@@ -56,7 +56,7 @@ class Schema
 		$this->fields = $fields;
 		$this->links = $links;
 		$this->separator = $separator;
-		$this->table = self::SQL_BEGIN . $table . self::SQL_END;
+		$this->table = $table;
 	}
 
 	public function clean ($mode)
@@ -82,7 +82,7 @@ class Schema
 
 	public function copy ($mode, $pairs, $source, $filters = array (), $orders = array (), $count = null, $offset = null)
 	{
-		$alias = self::SQL_BEGIN . '_src' . self::SQL_END;
+		$alias = self::SQL_BEGIN . '_s' . self::SQL_END;
 		$scope = $alias . '.';
 
 		// Extract target fields from input pairs
@@ -424,7 +424,7 @@ class Schema
 
 			$foreign = $this->links[$name];
 			$foreign_schema = is_callable ($foreign[0]) ? $foreign[0] () : $foreign[0];
-			$foreign_alias = self::SQL_BEGIN . '_' . $unique++ . self::SQL_BEGIN;
+			$foreign_alias = self::SQL_BEGIN . '_' . $unique++ . self::SQL_END;
 
 			// Build fields selection and join to foreign table
 			$namespace = $prefix . $name . $this->separator;
