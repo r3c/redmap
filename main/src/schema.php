@@ -77,7 +77,7 @@ class Schema
 				throw new \Exception ("invalid mode '$mode'");
 		}
 
-		return array ($verb . ' TABLE ' . $this->table, array ());
+		return array ($verb . ' TABLE ' . self::SQL_BEGIN . $this->table . self::SQL_END, array ());
 	}
 
 	public function copy ($mode, $pairs, $source, $filters = array (), $orders = array (), $count = null, $offset = null)
@@ -148,7 +148,7 @@ class Schema
 
 				return array
 				(
-					($mode === self::SET_REPLACE ? 'REPLACE' : 'INSERT') . ' INTO ' . $this->table .
+					($mode === self::SET_REPLACE ? 'REPLACE' : 'INSERT') . ' INTO ' . self::SQL_BEGIN . $this->table . self::SQL_END .
 					' (' . implode (self::SQL_NEXT, array_merge (array_keys ($indices), array_keys ($changes))) . ')' .
 					' SELECT ' . implode (self::SQL_NEXT, array_merge ($indices, $changes)) . ' FROM (' . $source_query . ') ' . $alias .
 					$update,
@@ -169,7 +169,7 @@ class Schema
 		return array
 		(
 			'DELETE FROM ' . $alias . ' ' .
-			'USING ' . $this->table . ' ' . $alias . $condition,
+			'USING ' . self::SQL_BEGIN . $this->table . self::SQL_END . ' ' . $alias . $condition,
 			$params
 		);
 	}
@@ -199,7 +199,7 @@ class Schema
 		return array
 		(
 			'SELECT ' . $this->build_select ($alias, '') . $select .
-			' FROM ' . $this->table . ' ' . $alias .
+			' FROM ' . self::SQL_BEGIN . $this->table . self::SQL_END . ' ' . $alias .
 			$relation . $condition . $sort . $range,
 			$params
 		);
@@ -247,7 +247,7 @@ class Schema
 
 				return array
 				(
-					($mode === self::SET_REPLACE ? 'REPLACE' : 'INSERT') . ' INTO ' . $this->table .
+					($mode === self::SET_REPLACE ? 'REPLACE' : 'INSERT') . ' INTO ' . self::SQL_BEGIN . $this->table . self::SQL_END .
 					' (' . implode (self::SQL_NEXT, array_keys ($insert_params)) . ')' .
 					' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($insert_params), self::MACRO_PARAM)) . ')' .
 					$update,
@@ -291,7 +291,7 @@ class Schema
 
 				return array
 				(
-					'UPDATE ' . $this->table .
+					'UPDATE ' . self::SQL_BEGIN . $this->table . self::SQL_END .
 					' SET ' . substr ($update, strlen (self::SQL_NEXT)) .
 					$condition,
 					$params
