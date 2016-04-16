@@ -31,7 +31,7 @@ function sql_assert_execute ($pair)
 
 	$result = $driver->execute ($query, $params);
 
-	assert ($result !== null, 'Execute query execution');
+	assert ($result !== null, 'Execute query execution: ' . $driver->error ());
 
 	return $result;
 }

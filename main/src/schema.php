@@ -64,20 +64,41 @@ class Schema
 		switch ($mode)
 		{
 			case self::CLEAN_OPTIMIZE:
-				$verb = 'OPTIMIZE';
+				$procedure = 'redmap_' . uniqid ();
 
-				break;
+				return array
+				(
+					array
+					(
+						'CREATE PROCEDURE ' . self::SQL_BEGIN . $procedure . self::SQL_END . '() ' .
+						'BEGIN ' .
+							'CASE (SELECT ENGINE FROM information_schema.TABLES where TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?) ' .
+								'WHEN \'MEMORY\' THEN ' .
+									'ALTER TABLE ' . self::SQL_BEGIN . $this->table . self::SQL_END . ' ENGINE=MEMORY; ' .
+								'ELSE ' .
+									'OPTIMIZE TABLE ' . self::SQL_BEGIN . $this->table . self::SQL_END . '; ' .
+							'END CASE; ' .
+						'END',
+						array ($this->table)
+					),
+					array
+					(
+						'CALL ' . self::SQL_BEGIN . $procedure . self::SQL_END . '()',
+						array ()
+					),
+					array
+					(
+						'DROP PROCEDURE IF EXISTS ' . self::SQL_BEGIN . $procedure . self::SQL_END . '',
+						array ()
+					)
+				);
 
 			case self::CLEAN_TRUNCATE:
-				$verb = 'TRUNCATE';
-
-				break;
+				return array (array ('TRUNCATE TABLE ' . self::SQL_BEGIN . $this->table . self::SQL_END, array ()));
 
 			default:
 				throw new \Exception ("invalid mode '$mode'");
 		}
-
-		return array ($verb . ' TABLE ' . self::SQL_BEGIN . $this->table . self::SQL_END, array ());
 	}
 
 	public function copy ($mode, $pairs, $source, $filters = array (), $orders = array (), $count = null, $offset = null)
@@ -207,7 +228,7 @@ class Schema
 
 	public function set ($mode, $pairs)
 	{
-		// Extract primary values (indices) and changeable values (changes)
+		// Extract primary values (indices) and mutable values (changes)
 		$changes = array ();
 		$indices = array ();
 

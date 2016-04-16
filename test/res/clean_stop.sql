@@ -1,2 +1,3 @@
 
-DROP TABLE `score`;
+DROP TABLE `score_memory`;
+DROP TABLE `score_myisam`;
