@@ -38,7 +38,7 @@ class MySQLiDriver
 		if ($result === false)
 			return null;
 
-		if ($result !== true)
+		if ($result !== true && $this->connection->more_results ())
 			$this->connection->next_result ();
 
 		return $this->connection->affected_rows >= 0 ? $this->connection->affected_rows : null;
