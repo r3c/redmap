@@ -2,7 +2,7 @@
 
 require_once ('../src/drivers/mysqli.php');
 require_once ('../src/schema.php');
-require_once ('storage/sql.php');
+require_once ('helper/sql.php');
 
 $source = new RedMap\Schema
 (
@@ -20,6 +20,7 @@ $target = new RedMap\Schema
 	array
 	(
 		'id'		=> array (RedMap\Schema::FIELD_PRIMARY),
+		'key'		=> array (RedMap\Schema::FIELD_PRIMARY),
 		'name'		=> null,
 		'counter'	=> null
 	)
@@ -36,6 +37,7 @@ sql_assert_execute ($target->copy
 	array
 	(
 		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
+		'key'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
 		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
 		'counter'	=> array (RedMap\Schema::COPY_VALUE, 0),
 	),
@@ -48,8 +50,8 @@ sql_assert_compare
 	$target->get (array (), array ('id' => true)),
 	array
 	(
-		array ('id' => 1, 'name' => 'Apple', 'counter' => 0),
-		array ('id' => 2, 'name' => 'Banana', 'counter' => 0)
+		array ('id' => 1, 'key' => 1, 'name' => 'Apple', 'counter' => 0),
+		array ('id' => 2, 'key' => 2, 'name' => 'Banana', 'counter' => 0)
 	)
 );
 
@@ -61,6 +63,7 @@ sql_assert_execute ($target->copy
 	array
 	(
 		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
+		'key'		=> array (RedMap\Schema::COPY_VALUE, 0),
 		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
 		'counter'	=> array (RedMap\Schema::COPY_VALUE, 1),
 	),
@@ -73,8 +76,8 @@ sql_assert_compare
 	$target->get (array (), array ('id' => true)),
 	array
 	(
-		array ('id' => 1, 'name' => 'Ananas', 'counter' => 1),
-		array ('id' => 2, 'name' => 'Banana', 'counter' => 0)
+		array ('id' => 1, 'key' => 0, 'name' => 'Ananas', 'counter' => 1),
+		array ('id' => 2, 'key' => 2, 'name' => 'Banana', 'counter' => 0)
 	)
 );
 
@@ -85,6 +88,7 @@ sql_assert_execute ($target->copy
 	array
 	(
 		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
+		'key'		=> array (RedMap\Schema::COPY_VALUE, 7),
 		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
 		'counter'	=> array (RedMap\Schema::COPY_VALUE, 2),
 	),
@@ -97,9 +101,9 @@ sql_assert_compare
 	$target->get (array (), array ('id' => true)),
 	array
 	(
-		array ('id' => 1, 'name' => 'Ananas', 'counter' => 2),
-		array ('id' => 2, 'name' => 'Banana', 'counter' => 2),
-		array ('id' => 3, 'name' => 'Carrot', 'counter' => 2)
+		array ('id' => 1, 'key' => 0, 'name' => 'Ananas', 'counter' => 2),
+		array ('id' => 2, 'key' => 2, 'name' => 'Banana', 'counter' => 2),
+		array ('id' => 3, 'key' => 7, 'name' => 'Carrot', 'counter' => 2)
 	)
 );
 
@@ -111,6 +115,7 @@ sql_assert_execute ($target->copy
 	array
 	(
 		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
+		'key'		=> array (RedMap\Schema::COPY_VALUE, 4),
 		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
 		'counter'	=> array (RedMap\Schema::COPY_VALUE, new RedMap\Max (1)),
 	),
@@ -124,6 +129,7 @@ sql_assert_execute ($target->copy
 	array
 	(
 		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
+		'key'		=> array (RedMap\Schema::COPY_VALUE, 3),
 		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
 		'counter'	=> array (RedMap\Schema::COPY_VALUE, new RedMap\Max (2)),
 	),
@@ -137,6 +143,7 @@ sql_assert_execute ($target->copy
 	array
 	(
 		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
+		'key'		=> array (RedMap\Schema::COPY_VALUE, 2),
 		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
 		'counter'	=> array (RedMap\Schema::COPY_VALUE, new RedMap\Max (3)),
 	),
@@ -150,6 +157,7 @@ sql_assert_execute ($target->copy
 	array
 	(
 		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
+		'key'		=> array (RedMap\Schema::COPY_VALUE, 1),
 		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
 		'counter'	=> array (RedMap\Schema::COPY_VALUE, new RedMap\Max (3)),
 	),
@@ -162,10 +170,10 @@ sql_assert_compare
 	$target->get (array (), array ('id' => true)),
 	array
 	(
-		array ('id' => 1, 'name' => 'Ananas', 'counter' => 2),
-		array ('id' => 2, 'name' => 'Banana', 'counter' => 2),
-		array ('id' => 3, 'name' => 'Carrot', 'counter' => 3),
-		array ('id' => 4, 'name' => 'Orange', 'counter' => 3)
+		array ('id' => 1, 'key' => 0, 'name' => 'Ananas', 'counter' => 2),
+		array ('id' => 2, 'key' => 2, 'name' => 'Banana', 'counter' => 2),
+		array ('id' => 3, 'key' => 7, 'name' => 'Carrot', 'counter' => 3),
+		array ('id' => 4, 'key' => 1, 'name' => 'Orange', 'counter' => 3)
 	)
 );
 

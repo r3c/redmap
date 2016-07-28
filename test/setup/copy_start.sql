@@ -13,6 +13,7 @@ INSERT INTO `source` (`id`, `name`) VALUES
 
 CREATE TABLE `target` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `key` int(10) NOT NULL,
   `name` varchar(64) NOT NULL,
   `counter` int(10) NOT NULL,
   PRIMARY KEY (`id`)

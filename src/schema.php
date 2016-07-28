@@ -193,10 +193,7 @@ class Schema
 				$value = Value::wrap ($origin[1]);
 
 				if ($primary)
-				{
 					$indices[$column] = $value->insert;
-					$params[] = self::MACRO_PARAM;
-				}
 				else
 					$values[$column] = $value;
 
