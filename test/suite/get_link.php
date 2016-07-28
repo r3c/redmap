@@ -1,8 +1,8 @@
 <?php
 
-require ('../../main/src/drivers/mysqli.php');
-require ('../../main/src/schema.php');
-require ('storage/sql.php');
+require_once ('../src/drivers/mysqli.php');
+require_once ('../src/schema.php');
+require_once ('storage/sql.php');
 
 $company = new RedMap\Schema
 (
@@ -46,7 +46,7 @@ $report = new RedMap\Schema
 
 // Start
 sql_connect ();
-sql_import ('../res/get_link_start.sql');
+sql_import ('setup/get_link_start.sql');
 
 // Link with company
 sql_assert_compare
@@ -129,6 +129,8 @@ sql_assert_compare
 );
 
 // Stop
-sql_import ('../res/get_link_stop.sql');
+sql_import ('setup/get_link_stop.sql');
+
+echo 'OK';
 
 ?>

@@ -1,8 +1,8 @@
 <?php
 
-require ('../../main/src/drivers/mysqli.php');
-require ('../../main/src/schema.php');
-require ('storage/sql.php');
+require_once ('../src/drivers/mysqli.php');
+require_once ('../src/schema.php');
+require_once ('storage/sql.php');
 
 $source = new RedMap\Schema
 (
@@ -27,7 +27,7 @@ $target = new RedMap\Schema
 
 // Start
 sql_connect ();
-sql_import ('../res/copy_start.sql');
+sql_import ('setup/copy_start.sql');
 
 // Insert
 sql_assert_execute ($target->copy
@@ -170,6 +170,8 @@ sql_assert_compare
 );
 
 // Stop
-sql_import ('../res/copy_stop.sql');
+sql_import ('setup/copy_stop.sql');
+
+echo 'OK';
 
 ?>

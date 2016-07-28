@@ -1,12 +1,12 @@
 <?php
 
-require ('../../main/src/drivers/mysqli.php');
-require ('../../main/src/schema.php');
-require ('storage/sql.php');
+require_once ('../src/drivers/mysqli.php');
+require_once ('../src/schema.php');
+require_once ('storage/sql.php');
 
 // Start
 sql_connect ();
-sql_import ('../res/clean_start.sql');
+sql_import ('setup/clean_start.sql');
 
 foreach (array ('score_memory', 'score_myisam') as $table)
 {
@@ -34,6 +34,8 @@ foreach (array ('score_memory', 'score_myisam') as $table)
 }
 
 // Stop
-sql_import ('../res/clean_stop.sql');
+sql_import ('setup/clean_stop.sql');
+
+echo 'OK';
 
 ?>

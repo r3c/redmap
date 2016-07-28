@@ -1,8 +1,8 @@
 <?php
 
-require ('../../main/src/drivers/mysqli.php');
-require ('../../main/src/schema.php');
-require ('storage/sql.php');
+require_once ('../src/drivers/mysqli.php');
+require_once ('../src/schema.php');
+require_once ('storage/sql.php');
 
 $message = new RedMap\Schema
 (
@@ -19,7 +19,7 @@ $message = new RedMap\Schema
 
 // Start
 sql_connect ();
-sql_import ('../res/set_start.sql');
+sql_import ('setup/set_start.sql');
 
 // Insert
 $id = sql_assert_execute ($message->set (RedMap\Schema::SET_INSERT, array ('sender' => 1, 'recipient' => 0, 'time' => 500, 'text' => 'Hello, World!')));
@@ -70,6 +70,8 @@ sql_assert_execute ($message->set (RedMap\Schema::SET_REPLACE, array ('id' => $i
 sql_assert_compare ($message->get (array ('id' => $id + 3), array ('id' => true)), array (array ('id' => $id + 3, 'sender' => 2, 'recipient' => 9, 'text' => '', 'time' => 0)));
 
 // Stop
-sql_import ('../res/set_stop.sql');
+sql_import ('setup/set_stop.sql');
+
+echo 'OK';
 
 ?>

@@ -1,8 +1,8 @@
 <?php
 
-require ('../../main/src/drivers/mysqli.php');
-require ('../../main/src/schema.php');
-require ('storage/sql.php');
+require_once ('../src/drivers/mysqli.php');
+require_once ('../src/schema.php');
+require_once ('storage/sql.php');
 
 $book = new RedMap\Schema
 (
@@ -17,7 +17,7 @@ $book = new RedMap\Schema
 
 // Start
 sql_connect ();
-sql_import ('../res/get_comparer_start.sql');
+sql_import ('setup/get_comparer_start.sql');
 
 // Get with default 'equal' comparer
 sql_assert_compare
@@ -105,6 +105,8 @@ sql_assert_compare
 );
 
 // Stop
-sql_import ('../res/get_comparer_stop.sql');
+sql_import ('setup/get_comparer_stop.sql');
+
+echo 'OK';
 
 ?>
