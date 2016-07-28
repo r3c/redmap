@@ -21,7 +21,7 @@ $target = new RedMap\Schema
 	(
 		'id'		=> array (RedMap\Schema::FIELD_PRIMARY),
 		'name'		=> null,
-		'comment'	=> null
+		'counter'	=> null
 	)
 );
 
@@ -37,10 +37,10 @@ sql_assert_execute ($target->copy
 	(
 		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
 		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
-		'comment'	=> array (RedMap\Schema::COPY_VALUE, 'step 1'),
+		'counter'	=> array (RedMap\Schema::COPY_VALUE, 0),
 	),
 	$source,
-	array ('id|ne' => 2)
+	array ('id|le' => 2)
 ));
 
 sql_assert_compare
@@ -48,8 +48,8 @@ sql_assert_compare
 	$target->get (array (), array ('id' => true)),
 	array
 	(
-		array ('id' => 1, 'name' => 'Apple', 'comment' => 'step 1'),
-		array ('id' => 3, 'name' => 'Carrot', 'comment' => 'step 1')
+		array ('id' => 1, 'name' => 'Apple', 'counter' => 0),
+		array ('id' => 2, 'name' => 'Banana', 'counter' => 0)
 	)
 );
 
@@ -62,7 +62,7 @@ sql_assert_execute ($target->copy
 	(
 		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
 		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
-		'comment'	=> array (RedMap\Schema::COPY_VALUE, 'step 2'),
+		'counter'	=> array (RedMap\Schema::COPY_VALUE, 1),
 	),
 	$source,
 	array ('id' => 1)
@@ -73,8 +73,8 @@ sql_assert_compare
 	$target->get (array (), array ('id' => true)),
 	array
 	(
-		array ('id' => 1, 'name' => 'Ananas', 'comment' => 'step 2'),
-		array ('id' => 3, 'name' => 'Carrot', 'comment' => 'step 1')
+		array ('id' => 1, 'name' => 'Ananas', 'counter' => 1),
+		array ('id' => 2, 'name' => 'Banana', 'counter' => 0)
 	)
 );
 
@@ -86,9 +86,10 @@ sql_assert_execute ($target->copy
 	(
 		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
 		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
-		'comment'	=> array (RedMap\Schema::COPY_VALUE, 'step 3'),
+		'counter'	=> array (RedMap\Schema::COPY_VALUE, 2),
 	),
-	$source
+	$source,
+	array ('id|le' => 3)
 ));
 
 sql_assert_compare
@@ -96,9 +97,75 @@ sql_assert_compare
 	$target->get (array (), array ('id' => true)),
 	array
 	(
-		array ('id' => 1, 'name' => 'Ananas', 'comment' => 'step 3'),
-		array ('id' => 2, 'name' => 'Banana', 'comment' => 'step 3'),
-		array ('id' => 3, 'name' => 'Carrot', 'comment' => 'step 3')
+		array ('id' => 1, 'name' => 'Ananas', 'counter' => 2),
+		array ('id' => 2, 'name' => 'Banana', 'counter' => 2),
+		array ('id' => 3, 'name' => 'Carrot', 'counter' => 2)
+	)
+);
+
+// Upsert with expressions
+
+sql_assert_execute ($target->copy
+(
+	RedMap\Schema::SET_UPSERT,
+	array
+	(
+		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
+		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
+		'counter'	=> array (RedMap\Schema::COPY_VALUE, new RedMap\Max (1)),
+	),
+	$source,
+	array ('id' => 1)
+));
+
+sql_assert_execute ($target->copy
+(
+	RedMap\Schema::SET_UPSERT,
+	array
+	(
+		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
+		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
+		'counter'	=> array (RedMap\Schema::COPY_VALUE, new RedMap\Max (2)),
+	),
+	$source,
+	array ('id' => 2)
+));
+
+sql_assert_execute ($target->copy
+(
+	RedMap\Schema::SET_UPSERT,
+	array
+	(
+		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
+		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
+		'counter'	=> array (RedMap\Schema::COPY_VALUE, new RedMap\Max (3)),
+	),
+	$source,
+	array ('id' => 3)
+));
+
+sql_assert_execute ($target->copy
+(
+	RedMap\Schema::SET_UPSERT,
+	array
+	(
+		'id'		=> array (RedMap\Schema::COPY_FIELD, 'id'),
+		'name'		=> array (RedMap\Schema::COPY_FIELD, 'name'),
+		'counter'	=> array (RedMap\Schema::COPY_VALUE, new RedMap\Max (3)),
+	),
+	$source,
+	array ('id' => 4)
+));
+
+sql_assert_compare
+(
+	$target->get (array (), array ('id' => true)),
+	array
+	(
+		array ('id' => 1, 'name' => 'Ananas', 'counter' => 2),
+		array ('id' => 2, 'name' => 'Banana', 'counter' => 2),
+		array ('id' => 3, 'name' => 'Carrot', 'counter' => 3),
+		array ('id' => 4, 'name' => 'Orange', 'counter' => 3)
 	)
 );
 

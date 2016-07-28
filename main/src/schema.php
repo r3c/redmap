@@ -2,11 +2,74 @@
 
 namespace RedMap;
 
-class Increment
+abstract class Value
 {
-	public function __construct ($delta)
+	public static function wrap ($value)
 	{
-		$this->delta = $delta;
+		if ($value instanceof Value)
+			return $value;
+
+		return new Constant ($value);
+	}
+
+	protected function __construct ($update, $insert)
+	{
+		$this->insert = $insert;
+		$this->update = $update;
+	}
+
+	public abstract function build ($column);
+}
+
+class Constant extends Value
+{
+	public function __construct ($value)
+	{
+		parent::__construct ($value, $value);
+	}
+
+	public function build ($column)
+	{
+		return Schema::MACRO_PARAM;
+	}
+}
+
+class Increment extends Value
+{
+	public function __construct ($delta, $insert = null)
+	{
+		parent::__construct ($delta, $insert !== null ? $insert : $delta);
+	}
+
+	public function build ($column)
+	{
+		return $column . ' + ' . Schema::MACRO_PARAM;
+	}
+}
+
+class Max extends Value
+{
+	public function __construct ($value)
+	{
+		parent::__construct ($value, $value);
+	}
+
+	public function build ($column)
+	{
+		return 'GREATEST(' . $column . ', ' . Schema::MACRO_PARAM . ')';
+	}
+}
+
+class Min extends Value
+{
+	public function __construct ($value)
+	{
+		parent::__construct ($value, $value);
+	}
+
+	public function build ($column)
+	{
+		return 'LOWEST(' . $column . ', ' . Schema::MACRO_PARAM . ')';
 	}
 }
 
@@ -107,10 +170,10 @@ class Schema
 		$scope = $alias . '.';
 
 		// Extract target fields from input pairs
-		$changes = array ();
-		$changes_params = array ();
 		$indices = array ();
-		$indices_params = array ();
+		$params = array ();
+		$selects = array ();
+		$values = array ();
 
 		foreach ($pairs as $name => $origin)
 		{
@@ -120,27 +183,30 @@ class Schema
 				$select = str_replace (self::MACRO_SCOPE, $scope, $origin[1]);
 			else if ($origin[0] === self::COPY_FIELD)
 			{
-				$source_column = $source->get_column ($origin[1], $alias);
+				$select = $source->get_column ($origin[1], $alias);
 
-				if ($source_column === null)
+				if ($select === null)
 					throw new \Exception ("can't copy from unknown field '$source->table.$origin[1]'");
-
-				$select = $source_column;
 			}
 			else
 			{
-				if ($primary)
-					$indices_params[] = $origin[1];
-				else
-					$changes_params[] = $origin[1];
+				$value = Value::wrap ($origin[1]);
 
-				$select = self::MACRO_PARAM;
+				if ($primary)
+				{
+					$indices[$column] = $value->insert;
+					$params[] = self::MACRO_PARAM;
+				}
+				else
+					$values[$column] = $value;
+
+				continue;
 			}
 
 			if ($primary)
 				$indices[$column] = $select;
 			else
-				$changes[$column] = $select;
+				$selects[$column] = $select;			
 		}
 
 		// Generate copy query for requested mode
@@ -149,31 +215,39 @@ class Schema
 			case self::SET_INSERT:
 			case self::SET_REPLACE:
 			case self::SET_UPSERT:
-				if ($mode === self::SET_UPSERT && count ($changes) > 0)
-				{
-					$update = '';
+				list ($source_query, $source_params) = $source->get ($filters, $orders, $count, $offset);
 
-					foreach ($changes as $column => $select)
+				foreach ($values as $column => $value)
+					$params[] = $value->insert;
+
+				$params = array_merge ($params, $source_params);
+				$update = '';
+
+				if ($mode === self::SET_UPSERT && count ($selects) + count ($values) > 0)
+				{
+					foreach ($selects as $column => $select)
 						$update .= self::SQL_NEXT . $column . ' = ' . $select;
 
+					foreach ($values as $column => $value)
+					{
+						$params[] = $value->update;
+						$update .= self::SQL_NEXT . $column . ' = ' . $value->build ($column);
+					}
+
 					$update = ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT));
-					$update_params = $changes_params;
-				}
-				else
-				{
-					$update = '';
-					$update_params = array ();
 				}
 
-				list ($source_query, $source_params) = $source->get ($filters, $orders, $count, $offset);
+				$columns = array_merge (array_keys ($indices), array_keys ($selects), array_keys ($values));
+				$values = array_merge ($indices, $selects, array_fill (0, count ($values), self::MACRO_PARAM));
 
 				return array
 				(
 					($mode === self::SET_REPLACE ? 'REPLACE' : 'INSERT') . ' INTO ' . self::SQL_BEGIN . $this->table . self::SQL_END .
-					' (' . implode (self::SQL_NEXT, array_merge (array_keys ($indices), array_keys ($changes))) . ')' .
-					' SELECT ' . implode (self::SQL_NEXT, array_merge ($indices, $changes)) . ' FROM (' . $source_query . ') ' . $alias .
+					' (' . implode (self::SQL_NEXT, $columns) . ')' .
+					' SELECT ' . implode (self::SQL_NEXT, $values) .
+					' FROM (' . $source_query . ') ' . $alias .
 					$update,
-					array_merge ($indices_params, $changes_params, $source_params, $update_params)
+					$params
 				);
 
 			default:
@@ -248,73 +322,71 @@ class Schema
 			case self::SET_INSERT:
 			case self::SET_REPLACE:
 			case self::SET_UPSERT:
+				$params = array ();
+				$update = '';
+
+				foreach ($changes as $column => $value)
+					$params[] = Value::wrap ($value)->insert;
+
+				foreach ($indices as $column => $value)
+					$params[] = $value;
+
 				if ($mode === self::SET_UPSERT && count ($changes) > 0)
 				{
-					$update = '';
-
 					foreach ($changes as $column => $value)
-						$update .= self::SQL_NEXT . $column . ' = ' . self::MACRO_PARAM;
+					{
+						$value = Value::wrap ($value);
+
+						$params[] = $value->update;
+						$update .= self::SQL_NEXT . $column . ' = ' . $value->build ($column);
+					}
 
 					$update = ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT));
-					$update_params = $changes;
-				}
-				else
-				{
-					$update = '';
-					$update_params = array ();
 				}
 
-				$insert_params = array_merge ($changes, $indices);
+				$columns = array_merge (array_keys ($changes), array_keys ($indices));
 
 				return array
 				(
 					($mode === self::SET_REPLACE ? 'REPLACE' : 'INSERT') . ' INTO ' . self::SQL_BEGIN . $this->table . self::SQL_END .
-					' (' . implode (self::SQL_NEXT, array_keys ($insert_params)) . ')' .
-					' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($insert_params), self::MACRO_PARAM)) . ')' .
+					' (' . implode (self::SQL_NEXT, $columns) . ')' .
+					' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($columns), self::MACRO_PARAM)) . ')' .
 					$update,
-					array_merge (array_values ($insert_params), array_values ($update_params))
+					$params
 				);
 
 			case self::SET_UPDATE:
 				if (count ($changes) === 0)
 					break;
 
-				$update = '';
 				$params = array ();
+				$update = '';
+				$where = '';
 
-				foreach ($changes as $column => $value)
+				foreach ($changes as $column => $change)
 				{
-					$update .= self::SQL_NEXT . $column . ' = ';
+					$value = Value::wrap ($change);
 
-					if ($value instanceof Increment)
-					{
-						$update .= $column . ' + ' . self::MACRO_PARAM;
-						$value = $value->delta;
-					}
-					else
-						$update .= self::MACRO_PARAM;
-
-					$params[] = $value;
+					$params[] = $value->update;
+					$update .= self::SQL_NEXT . $column . ' = ' . $value->build ($column);
 				}
-
-				$condition = '';
 
 				foreach ($indices as $column => $value)
 				{
-					if ($condition !== '')
-						$condition .= ' AND ';
+					if ($where !== '')
+						$where .= ' AND ';
 					else
-						$condition .= ' WHERE ';
+						$where .= ' WHERE ';
 
-					$condition .= $column . ' = ' . self::MACRO_PARAM;
 					$params[] = $value;
+					$where .= $column . ' = ' . self::MACRO_PARAM;
 				}
 
 				return array
 				(
 					'UPDATE ' . self::SQL_BEGIN . $this->table . self::SQL_END .
 					' SET ' . substr ($update, strlen (self::SQL_NEXT)) .
-					$condition,
+					$where,
 					$params
 				);
 
