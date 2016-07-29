@@ -82,7 +82,7 @@ class Min extends Value
 
 	public function build ($column)
 	{
-		return 'LOWEST(' . $column . ', ' . Schema::MACRO_PARAM . ')';
+		return 'LEAST(' . $column . ', ' . Schema::MACRO_PARAM . ')';
 	}
 }
 

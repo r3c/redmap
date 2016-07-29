@@ -50,6 +50,18 @@ sql_assert_compare ($schema->get (array ('id' => 3), array ('id' => true)), arra
 sql_assert_execute ($schema->set (RedMap\Schema::SET_UPSERT, array ('id' => 3, 'value' => new RedMap\Coalesce (10))));
 sql_assert_compare ($schema->get (array ('id' => 3), array ('id' => true)), array (array ('id' => 3, 'value' => 5)));
 
+// Min: upsert missing row
+sql_assert_execute ($schema->set (RedMap\Schema::SET_UPSERT, array ('id' => 4, 'value' => new RedMap\Min (200))));
+sql_assert_compare ($schema->get (array ('id' => 4), array ('id' => true)), array (array ('id' => 4, 'value' => 200)));
+
+// Min: upsert existing row (keep current value)
+sql_assert_execute ($schema->set (RedMap\Schema::SET_UPSERT, array ('id' => 4, 'value' => new RedMap\Min (500))));
+sql_assert_compare ($schema->get (array ('id' => 4), array ('id' => true)), array (array ('id' => 4, 'value' => 200)));
+
+// Min: upsert existing row (use new value)
+sql_assert_execute ($schema->set (RedMap\Schema::SET_UPSERT, array ('id' => 4, 'value' => new RedMap\Min (100))));
+sql_assert_compare ($schema->get (array ('id' => 4), array ('id' => true)), array (array ('id' => 4, 'value' => 100)));
+
 // Stop
 sql_import ('setup/set_value_stop.sql');
 
