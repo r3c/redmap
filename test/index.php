@@ -10,4 +10,6 @@ Get (comparer): <?php require ('suite/get_comparer.php'); ?>
 
 Get (link): <?php require ('suite/get_link.php'); ?>
 
-Set: <?php require ('suite/set.php'); ?>
+Set (mode): <?php require ('suite/set_mode.php'); ?>
+
+Set (value): <?php require ('suite/set_value.php'); ?>
