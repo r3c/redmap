@@ -34,6 +34,19 @@ class Constant extends Value
 	}
 }
 
+class Coalesce extends Value
+{
+	public function __construct ($value)
+	{
+		parent::__construct ($value, $value);
+	}
+
+	public function build ($column)
+	{
+		return 'COALESCE(' . $column . ', ' . Schema::MACRO_PARAM . ')';
+	}
+}
+
 class Increment extends Value
 {
 	public function __construct ($delta, $insert = null)

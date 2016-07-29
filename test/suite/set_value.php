@@ -42,6 +42,14 @@ sql_assert_compare ($schema->get (array ('id' => 2), array ('id' => true)), arra
 sql_assert_execute ($schema->set (RedMap\Schema::SET_UPSERT, array ('id' => 2, 'value' => new RedMap\Max (1000))));
 sql_assert_compare ($schema->get (array ('id' => 2), array ('id' => true)), array (array ('id' => 2, 'value' => 1000)));
 
+// Coalesce: insert
+sql_assert_execute ($schema->set (RedMap\Schema::SET_UPSERT, array ('id' => 3, 'value' => new RedMap\Coalesce (5))));
+sql_assert_compare ($schema->get (array ('id' => 3), array ('id' => true)), array (array ('id' => 3, 'value' => 5)));
+
+// Coalesce: update
+sql_assert_execute ($schema->set (RedMap\Schema::SET_UPSERT, array ('id' => 3, 'value' => new RedMap\Coalesce (10))));
+sql_assert_compare ($schema->get (array ('id' => 3), array ('id' => true)), array (array ('id' => 3, 'value' => 5)));
+
 // Stop
 sql_import ('setup/set_value_stop.sql');
 
