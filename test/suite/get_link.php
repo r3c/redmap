@@ -128,6 +128,16 @@ sql_assert_compare
 	)
 );
 
+// Link with both company and manager, filter only on linked fields
+sql_assert_compare
+(
+	$employee->get (array ('+' => array ('company' => array ('id' => 1), 'manager' => array ('id' => 1))), array ('id' => true)),
+	array
+	(
+		array ('id' => '2', 'name' => 'Bob', 'company__id' => '1', 'company__name' => 'Google', 'manager__id' => '1', 'manager__name' => 'Alice')
+	)
+);
+
 // Stop
 sql_import ('setup/get_link_stop.sql');
 

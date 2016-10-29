@@ -572,6 +572,12 @@ class Schema
 			// Recursively merge nested fields and tables
 			list ($inner_select, $inner_relation, $inner_relation_params, $inner_condition, $inner_condition_params) = $foreign_schema->build_filter ($children, $foreign_alias, $begin, $end, $namespace, $unique);
 
+			if ($inner_condition !== '')
+			{
+				$begin = ' AND (';
+				$end = ')';
+			}
+
 			$condition .= $inner_condition;
 			$condition_params = array_merge ($condition_params, $inner_condition_params);
 			$relation .= $inner_relation . $connect_relation;
