@@ -537,7 +537,7 @@ class Schema
 			else
 				$type = 'LEFT';
 
-			$relation .= ' ' . $type . ' JOIN (' . $foreign_schema->table . ' ' . $foreign_alias;
+			$relation .= ' ' . $type . ' JOIN (' . self::SQL_BEGIN . $foreign_schema->table . self::SQL_END . ' ' . $foreign_alias;
 			$select .= self::SQL_NEXT . $foreign_schema->build_select ($foreign_alias, $namespace);
 
 			// Resolve relation connections
