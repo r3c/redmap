@@ -4,6 +4,8 @@ RedMap Tests
 
 Clean: <?php require ('suite/clean.php'); ?>
 
+Connect: <?php require ('suite/connect.php'); ?>
+
 Copy: <?php require ('suite/copy.php'); ?>
 
 Get (comparer): <?php require ('suite/get_comparer.php'); ?>

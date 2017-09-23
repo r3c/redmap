@@ -29,18 +29,17 @@ function sql_assert_execute ($pair)
 
 	list ($query, $params) = $pair;
 
-	$result = $driver->execute ($query, $params);
-
-	assert ($result !== null, 'Execute query execution: ' . $driver->error ());
-
-	return $result;
+	return $driver->execute ($query, $params);
 }
 
 function sql_connect ()
 {
 	global $driver;
 
-	$driver = new RedMap\Drivers\MySQLiDriver ('utf-8');
+	$driver = new RedMap\Drivers\MySQLiDriver ('utf-8', function ($driver, $query)
+	{
+		assert (false, 'Query execution failed: ' . $driver->error ());
+	});
 
 	assert ($driver->connect ('root', '', 'redmap'), 'Connection to database');
 }

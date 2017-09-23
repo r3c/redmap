@@ -4,6 +4,12 @@ namespace RedMap\Drivers;
 
 class MySQLiDriver
 {
+	private $server_host;
+	private $server_name;
+	private $server_pass;
+	private $server_port;
+	private $server_user;
+
 	public function __construct ($charset, $handler = null)
 	{
 		\mysqli_report (MYSQLI_REPORT_OFF);
@@ -11,19 +17,18 @@ class MySQLiDriver
 		$this->charset = $charset;
 		$this->connection = null;
 		$this->handler = $handler;
+		$this->reconnect = false;
 	}
 
 	public function connect ($user, $pass, $name, $host = '127.0.0.1', $port = 3306)
 	{
-		$this->connection = new \mysqli ($host, $user, $pass, $name, $port);
+		$this->server_host = $host;
+		$this->server_user = $user;
+		$this->server_pass = $pass;
+		$this->server_name = $name;
+		$this->server_port = $port;
 
-		if ($this->connection->connect_errno !== 0)
-			return false;
-
-		if ($this->charset !== null)
-			$this->connection->set_charset ($this->charset);
-
-		return true;
+		return $this->reset ();
 	}
 
 	public function error ()
@@ -33,7 +38,7 @@ class MySQLiDriver
 
 	public function execute ($query, $params = array ())
 	{
-		$result = $this->send ($query, $params);
+		$result = $this->query ($query, $params);
 
 		if ($result === false)
 			return null;
@@ -46,7 +51,7 @@ class MySQLiDriver
 
 	public function get_first ($query, $params = array (), $default = null)
 	{
-		$result = $this->send ($query, $params);
+		$result = $this->query ($query, $params);
 
 		if ($result === false)
 			return $default;
@@ -59,7 +64,7 @@ class MySQLiDriver
 
 	public function get_rows ($query, $params = array (), $default = null)
 	{
-		$result = $this->send ($query, $params);
+		$result = $this->query ($query, $params);
 
 		if ($result === false)
 			return $default;
@@ -76,7 +81,7 @@ class MySQLiDriver
 
 	public function get_value ($query, $params = array (), $default = null)
 	{
-		$result = $this->send ($query, $params);
+		$result = $this->query ($query, $params);
 
 		if ($result === false)
 			return $default;
@@ -92,7 +97,7 @@ class MySQLiDriver
 
 	public function insert ($query, $params = array ())
 	{
-		$result = $this->send ($query, $params);
+		$result = $this->query ($query, $params);
 
 		if ($result === false)
 			return null;
@@ -127,7 +132,7 @@ class MySQLiDriver
 		return '\'' . $this->connection->escape_string ((string)$value) . '\'';
 	}
 
-	private function send ($query, $params)
+	private function query ($query, $params)
 	{
 		for ($offset = 0; ($offset = strpos ($query, '?', $offset)) !== false; $offset += strlen ($escape))
 		{
@@ -135,15 +140,39 @@ class MySQLiDriver
 			$query = substr ($query, 0, $offset) . $escape . substr ($query, $offset + 1);
 		}
 
-		$result = $this->connection->query ($query);
-
-		if ($result === false && $this->handler !== null)
+		for ($reconnect = $this->reconnect; true; $reconnect = false)
 		{
-			$handler = $this->handler;
-			$handler ($this, $query);
+			$result = @$this->connection->query ($query);
+
+			if ($result !== false)
+				break;
+
+			if (!$reconnect || $this->connection->errno !== 2006 || !$this->reset ())
+			{
+				if ($this->handler !== null)
+				{
+					$handler = $this->handler;
+					$handler ($this, $query);
+				}
+
+				break;
+			}
 		}
 
 		return $result;
+	}
+
+	private function reset ()
+	{
+		$this->connection = new \mysqli ($this->server_host, $this->server_user, $this->server_pass, $this->server_name, $this->server_port);
+
+		if ($this->connection->connect_errno !== 0)
+			return false;
+
+		if ($this->charset !== null)
+			$this->connection->set_charset ($this->charset);
+
+		return true;
 	}
 }
 
