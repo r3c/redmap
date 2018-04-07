@@ -283,29 +283,32 @@ class Schema
 	{
 		// Select columns from links to other schemas
 		$alias = self::SQL_BEGIN . '_0' . self::SQL_END;
+		$aliases = array ();
 		$unique = 1;
 
-		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($filters, $alias, ' WHERE ', '', '', $unique);
+		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($filters, $alias, ' WHERE ', '', '', $aliases, $unique);
 
 		// Build "where", "order by" and "limit" clauses
 		$params = array_merge ($relation_params, $condition_params);
-		$sort = $this->build_sort ($orders, $alias);
+		$sort = $this->build_sort ($orders, $aliases, $alias);
 
 		if ($count !== null)
 		{
 			$params[] = $offset !== null ? (int)$offset : 0;
 			$params[] = (int)$count;
-
-			$range = ' LIMIT ' . self::MACRO_PARAM . self::SQL_NEXT . self::MACRO_PARAM;
 		}
-		else
-			$range = '';
 
 		return array
 		(
 			'SELECT ' . $this->build_select ($alias, '') . $select .
 			' FROM ' . self::SQL_BEGIN . $this->table . self::SQL_END . ' ' . $alias .
-			$relation . $condition . $sort . $range,
+			$relation . $condition .
+			($sort
+				? ' ORDER BY ' . $sort
+				: '') .
+			($count
+				? ' LIMIT ' . self::MACRO_PARAM . self::SQL_NEXT . self::MACRO_PARAM
+				: ''),
 			$params
 		);
 	}
@@ -497,7 +500,7 @@ class Schema
 		return array ('', array ());
 	}
 
-	private function build_filter ($filters, $alias, $begin, $end, $prefix, &$unique)
+	private function build_filter ($filters, $alias, $begin, $end, $prefix, &$aliases, &$unique)
 	{
 		if ($filters !== null)
 		{
@@ -522,42 +525,39 @@ class Schema
 
 		foreach ($link as $name => $children)
 		{
-			if (!isset ($this->links[$name]))
-				throw new \Exception ("can't link unknown relation '$name' to schema '$this->table'");
+			list ($link_schema, $link_flags, $link_relations) = $this->get_link ($name);
 
-			$foreign = $this->links[$name];
-			$foreign_schema = is_callable ($foreign[0]) ? $foreign[0] () : $foreign[0];
-			$foreign_alias = self::SQL_BEGIN . '_' . $unique++ . self::SQL_END;
+			$link_alias = self::SQL_BEGIN . '_' . $unique++ . self::SQL_END;
 
 			// Build fields selection and join to foreign table
 			$namespace = $prefix . $name . $this->separator;
 
-			if (($foreign[1] & self::LINK_OPTIONAL) === 0)
+			if (($link_flags & self::LINK_OPTIONAL) === 0)
 				$type = 'INNER';
 			else
 				$type = 'LEFT';
 
-			$relation .= ' ' . $type . ' JOIN (' . self::SQL_BEGIN . $foreign_schema->table . self::SQL_END . ' ' . $foreign_alias;
-			$select .= self::SQL_NEXT . $foreign_schema->build_select ($foreign_alias, $namespace);
+			$relation .= ' ' . $type . ' JOIN (' . self::SQL_BEGIN . $link_schema->table . self::SQL_END . ' ' . $link_alias;
+			$select .= self::SQL_NEXT . $link_schema->build_select ($link_alias, $namespace);
 
 			// Resolve relation connections
 			$connect_relation = ') ON ';
 			$connect_relation_params = array ();
 			$logical = '';
 
-			foreach ($foreign[2] as $parent_name => $foreign_name)
+			foreach ($link_relations as $parent_name => $foreign_name)
 			{
-				$foreign_column = $foreign_schema->get_column ($foreign_name, $foreign_alias);
+				$foreign_column = $link_schema->get_column ($foreign_name, $link_alias);
 
 				if ($foreign_column === null)
-					throw new \Exception ("can't link unknown field $foreign_schema->table.$foreign_name to $this->table.$parent_name for relation '$name'");
+					throw new \Exception ("can't link unknown field $link_schema->table.$foreign_name to $this->table.$parent_name for relation '$name'");
 
 				$parent_column = $this->get_column ($parent_name, $alias);
 
 				if ($parent_column === null)
 				{
 					if ($children === null || !isset ($children[$parent_name]))
-						throw new \Exception ("can't link missing value '$parent_name' to $foreign_schema->table.$foreign_name for relation '$name' in schema $this->table");
+						throw new \Exception ("can't link missing value '$parent_name' to $link_schema->table.$foreign_name for relation '$name' in schema $this->table");
 
 					$connect_relation_params[] = $children[$parent_name];
 					$parent_column = self::MACRO_PARAM;
@@ -570,7 +570,9 @@ class Schema
 			}
 
 			// Recursively merge nested fields and tables
-			list ($inner_select, $inner_relation, $inner_relation_params, $inner_condition, $inner_condition_params) = $foreign_schema->build_filter ($children, $foreign_alias, $begin, $end, $namespace, $unique);
+			$link_aliases = array ();
+
+			list ($inner_select, $inner_relation, $inner_relation_params, $inner_condition, $inner_condition_params) = $link_schema->build_filter ($children, $link_alias, $begin, $end, $namespace, $link_aliases, $unique);
 
 			if ($inner_condition !== '')
 			{
@@ -583,6 +585,8 @@ class Schema
 			$relation .= $inner_relation . $connect_relation;
 			$relation_params = array_merge ($relation_params, $inner_relation_params, $connect_relation_params);
 			$select .= $inner_select;
+
+			$aliases[$name] = array ($link_alias, $link_aliases);
 		}
 
 		return array ($select, $relation, $relation_params, $condition, $condition_params);
@@ -601,24 +605,44 @@ class Schema
 			$columns .= self::SQL_NEXT . str_replace (self::MACRO_SCOPE, $scope, $field[1]) . ' ' . self::SQL_BEGIN . $namespace . $name . self::SQL_END;
 		}
 
-		return substr ($columns, strlen (self::SQL_NEXT));
+		return (string)substr ($columns, strlen (self::SQL_NEXT));
 	}
 
-	private function build_sort ($orders, $alias)
+	private function build_sort ($orders, $aliases, $alias)
 	{
 		$sort = '';
 
-		foreach ($orders as $name => $asc)
+		// Build ordering rules on linked tables
+		if (isset ($orders[self::FILTER_LINK]))
 		{
+			foreach ($orders[self::FILTER_LINK] as $name => $link_orders)
+			{
+				list ($link_schema, $link_flags, $link_relations) = $this->get_link ($name);
+
+				if (!isset ($aliases[$name]))
+					throw new \Exception ("can't order by fields from non-linked schema '$this->table.$name'");
+
+				list ($link_alias, $link_aliases) = $aliases[$name];
+
+				$sort .= self::SQL_NEXT . $link_schema->build_sort ($link_orders, $link_aliases, $link_alias);
+			}
+		}
+
+		// Build ordering rules on columns
+		foreach ($orders as $name => $ascending)
+		{
+			if ($name === self::FILTER_LINK)
+				continue;
+
 			$column = $this->get_column ($name, $alias);
 
 			if ($column === null)
 				throw new \Exception ("can't order by unknown field '$this->table.$name'");
 
-			$sort .= ($sort === '' ? ' ORDER BY ' : self::SQL_NEXT) . $column . ($asc ? '' : ' DESC');
+			$sort .= self::SQL_NEXT . $column . ($ascending ? '' : ' DESC');
 		}
 
-		return $sort;
+		return (string)substr ($sort, strlen (self::SQL_NEXT));
 	}
 
 	private function get_assignment ($name)
@@ -645,6 +669,21 @@ class Schema
 			return null;
 
 		return str_replace (self::MACRO_SCOPE, $alias . '.', $this->fields[$name][1]);
+	}
+
+	/*
+	** Get linked schema by name.
+	** $name:	link name
+	** return:	(schema, flags, relations)
+	*/
+	private function get_link ($name)
+	{
+		if (!isset ($this->links[$name]))
+			throw new \Exception ("can't link unknown relation '$name' to schema '$this->table'");
+
+		$link = $this->links[$name];
+
+		return array (is_callable ($link[0]) ? $link[0] () : $link[0], $link[1], $link[2]);
 	}
 }
 

@@ -138,6 +138,21 @@ sql_assert_compare
 	)
 );
 
+// Link with company and filter by company name and employee name
+sql_assert_compare
+(
+	$employee->get (array ('+' => array ('company' => null)), array ('+' => array ('company' => array ('name' => true)), 'id' => false)),
+	array
+	(
+		array ('id' => '5', 'name' => 'Eve', 'company__id' => '3', 'company__name' => 'Amazon'),
+		array ('id' => '6', 'name' => 'Mallory', 'company__id' => '4', 'company__name' => 'Apple'),
+		array ('id' => '4', 'name' => 'Dave', 'company__id' => '2', 'company__name' => 'Facebook'),
+		array ('id' => '3', 'name' => 'Carol', 'company__id' => '2', 'company__name' => 'Facebook'),
+		array ('id' => '2', 'name' => 'Bob', 'company__id' => '1', 'company__name' => 'Google'),
+		array ('id' => '1', 'name' => 'Alice', 'company__id' => '1', 'company__name' => 'Google')
+	)
+);
+
 // Stop
 sql_import ('setup/get_link_stop.sql');
 
