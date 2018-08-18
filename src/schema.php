@@ -12,13 +12,13 @@ abstract class Value
 		return new Constant ($value);
 	}
 
-	protected function __construct ($update, $insert)
+	protected function __construct ($initial, $update)
 	{
-		$this->insert = $insert;
+		$this->initial = $initial;
 		$this->update = $update;
 	}
 
-	public abstract function build ($column);
+	public abstract function build_update ($column);
 }
 
 class Constant extends Value
@@ -28,7 +28,7 @@ class Constant extends Value
 		parent::__construct ($value, $value);
 	}
 
-	public function build ($column)
+	public function build_update ($column)
 	{
 		return Schema::MACRO_PARAM;
 	}
@@ -41,7 +41,7 @@ class Coalesce extends Value
 		parent::__construct ($value, $value);
 	}
 
-	public function build ($column)
+	public function build_update ($column)
 	{
 		return 'COALESCE(' . $column . ', ' . Schema::MACRO_PARAM . ')';
 	}
@@ -51,10 +51,10 @@ class Increment extends Value
 {
 	public function __construct ($delta, $insert = null)
 	{
-		parent::__construct ($delta, $insert !== null ? $insert : $delta);
+		parent::__construct ($insert !== null ? $insert : $delta, $delta);
 	}
 
-	public function build ($column)
+	public function build_update ($column)
 	{
 		return $column . ' + ' . Schema::MACRO_PARAM;
 	}
@@ -67,7 +67,7 @@ class Max extends Value
 		parent::__construct ($value, $value);
 	}
 
-	public function build ($column)
+	public function build_update ($column)
 	{
 		return 'GREATEST(' . $column . ', ' . Schema::MACRO_PARAM . ')';
 	}
@@ -80,7 +80,7 @@ class Min extends Value
 		parent::__construct ($value, $value);
 	}
 
-	public function build ($column)
+	public function build_update ($column)
 	{
 		return 'LEAST(' . $column . ', ' . Schema::MACRO_PARAM . ')';
 	}
@@ -206,7 +206,7 @@ class Schema
 				$value = Value::wrap ($origin[1]);
 
 				if ($primary)
-					$indices[$column] = $value->insert;
+					$indices[$column] = $value->initial;
 				else
 					$values[$column] = $value;
 
@@ -228,7 +228,7 @@ class Schema
 				list ($source_query, $source_params) = $source->get ($filters, $orders, $count, $offset);
 
 				foreach ($values as $column => $value)
-					$params[] = $value->insert;
+					$params[] = $value->initial;
 
 				$params = array_merge ($params, $source_params);
 				$update = '';
@@ -241,7 +241,7 @@ class Schema
 					foreach ($values as $column => $value)
 					{
 						$params[] = $value->update;
-						$update .= self::SQL_NEXT . $column . ' = ' . $value->build ($column);
+						$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
 					}
 
 					$update = ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT));
@@ -339,7 +339,7 @@ class Schema
 				$update = '';
 
 				foreach ($changes as $column => $value)
-					$params[] = Value::wrap ($value)->insert;
+					$params[] = Value::wrap ($value)->initial;
 
 				foreach ($indices as $column => $value)
 					$params[] = $value;
@@ -351,7 +351,7 @@ class Schema
 						$value = Value::wrap ($value);
 
 						$params[] = $value->update;
-						$update .= self::SQL_NEXT . $column . ' = ' . $value->build ($column);
+						$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
 					}
 
 					$update = ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT));
@@ -381,7 +381,7 @@ class Schema
 					$value = Value::wrap ($change);
 
 					$params[] = $value->update;
-					$update .= self::SQL_NEXT . $column . ' = ' . $value->build ($column);
+					$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
 				}
 
 				foreach ($indices as $column => $value)
