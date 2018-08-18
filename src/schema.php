@@ -270,12 +270,13 @@ class Schema
 	{
 		$alias = self::format_name ('_0');
 
-		list ($condition, $params) = $this->build_condition ($filters, $alias, ' WHERE ', '');
+		list ($condition, $params) = $this->build_condition ($filters, $alias);
 
 		return array
 		(
-			'DELETE FROM ' . $alias . ' ' .
-			'USING ' . self::format_name ($this->table) . ' ' . $alias . $condition,
+			'DELETE FROM ' . $alias .
+			(' USING ' . self::format_name ($this->table) . ' ' . $alias) .
+			($condition !== '' ? ' WHERE ' . $condition : ''),
 			$params
 		);
 	}
@@ -447,7 +448,7 @@ class Schema
 		);
 	}
 
-	private function build_condition ($filters, $alias, $begin, $end)
+	private function build_condition ($filters, $source)
 	{
 		static $comparers;
 		static $logicals;
@@ -479,6 +480,7 @@ class Schema
 		else
 			$logical = ' AND ';
 
+		// Build conditions from given filters
 		$condition = '';
 		$params = array ();
 		$separator = false;
@@ -488,12 +490,22 @@ class Schema
 			if ($name === self::FILTER_GROUP || $name === self::FILTER_LINK)
 				continue;
 
+			// Append separator after first filter
+			if ($separator)
+				$condition .= $logical;
+
+			$separator = true;
+
 			// Complex sub-condition group
 			if (is_array ($value) && is_numeric ($name))
 			{
-				list ($filter_condition, $filter_params) = $this->build_condition ($value, $alias, '(', ')');
+				list ($group_condition, $group_params) = $this->build_condition ($value, $source);
 
-				$params = array_merge ($params, $filter_params);
+				if ($group_condition !== '')
+				{
+					$condition .= '(' . $group_condition . ')';
+					$params = array_merge ($params, $group_params);
+				}
 			}
 
 			// Simple field condition
@@ -516,37 +528,28 @@ class Schema
 					list ($lhs, $rhs) = $comparers['is'];
 
 				// Build field condition
-				$expression = $this->get_expression ($name, $alias);
+				$expression = $this->get_expression ($name, $source);
 
 				if ($expression === null)
 					throw new \Exception ("can't filter on unknown field '$this->table.$name'");
 
-				$filter_condition = $lhs . $expression . $rhs;
+				$condition .= $lhs . $expression . $rhs;
 				$params[] = $value;
 			}
-
-			// Append to full condition
-			if ($separator)
-				$condition .= $logical;
-
-			$condition .= $filter_condition;
-			$separator = true;
 		}
 
-		if ($separator)
-			return array ($begin . $condition . $end, $params);
-
-		return array ('', array ());
+		return array ($condition, $params);
 	}
 
 	private function build_filter ($filters, $alias, $begin, $end, $prefix, &$aliases, &$unique)
 	{
 		if ($filters !== null)
 		{
-			list ($condition, $condition_params) = $this->build_condition ($filters, $alias, $begin, $end);
+			list ($condition, $condition_params) = $this->build_condition ($filters, $alias);
 
 			if ($condition !== '')
 			{
+				$condition = $begin . $condition . $end;
 				$begin = ' AND (';
 				$end = ')';
 			}
