@@ -15,3 +15,5 @@ Get (link): <?php require ('suite/get_link.php'); ?>
 Set (mode): <?php require ('suite/set_mode.php'); ?>
 
 Set (value): <?php require ('suite/set_value.php'); ?>
+
+Update: <?php require ('suite/update.php'); ?>

@@ -108,6 +108,7 @@ class Schema
 	const SQL_BEGIN = '`';
 	const SQL_END = '`';
 	const SQL_NEXT = ',';
+	const SQL_NOOP = 'SELECT 0';
 
 	public function __construct ($table, $fields, $separator = '__', $links = array ())
 	{
@@ -407,6 +408,43 @@ class Schema
 			default:
 				throw new \Exception ("invalid mode '$mode'");
 		}
+	}
+
+	public function update ($assignments, $filters)
+	{
+		if (count ($assignments) === 0)
+			return self::SQL_NOOP;
+
+		// Build update statement for requested fields from current table
+		$update = '';
+		$update_params = array ();
+
+		foreach ($assignments as $name => $value)
+		{
+			list ($column, $unused) = $this->get_assignment ($name);
+			$value = Value::wrap ($value);
+
+			$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
+			$update_params[] = $value->update;
+		}
+
+		// Build conditions and relations to other tables
+		$aliases = array ();
+		$unique = 0;
+
+		$current = self::format_alias ($unique++);
+
+		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($filters, $current, ' WHERE ', '', '', $aliases, $unique);
+
+		// Build query with parameters
+		return array
+		(
+			'UPDATE ' . self::format_name ($this->table) . ' ' . $current .
+			$relation .
+			' SET ' . substr ($update, strlen (self::SQL_NEXT)) .
+			$condition,
+			array_merge ($relation_params, $update_params, $condition_params)
+		);
 	}
 
 	private function build_condition ($filters, $alias, $begin, $end)

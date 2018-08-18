@@ -9,17 +9,20 @@ function sql_assert_compare ($pair, $expected)
 	$returned = $driver->get_rows ($query, $params);
 
 	assert ($returned !== null, 'Get query failed');
-	assert (count ($expected) === count ($returned), 'Same number of returned rows');
+	assert (count ($expected) === count ($returned), 'Query returned ' . count ($returned) . ' row(s) instead of ' . count ($expected));
 
 	for ($i = 0; $i < count ($expected); ++$i)
 	{
 		$expected_row = $expected[$i];
 		$returned_row = $returned[$i];
 
-		assert (count ($expected_row) === count ($returned_row), 'Same number of fields in row #' . $i);
+		assert (count ($expected_row) === count ($returned_row), 'Row #' . $i . ' has ' . count ($returned_row) . ' field(s) instead of ' . count ($expected_row));
 
 		foreach ($expected_row as $key => $value)
-			assert (array_key_exists ($key, $returned_row) && $returned_row[$key] === ($value !== null ? (string)$value : null), 'Match for key "' . $key . '" in row #' . $i);
+		{
+			assert (array_key_exists ($key, $returned_row), 'Row #' . $i . ' is missing field "' . $key . '"');
+			assert (array_key_exists ($key, $returned_row) && $returned_row[$key] === ($value !== null ? (string)$value : null), 'Field "' . $key . '" in row #' . $i . ' is ' . (isset ($returned_row[$key]) ? var_export ($returned_row[$key], true) : 'missing') . ' instead of ' . var_export ($value, true));
+		}
 	}
 }
 
