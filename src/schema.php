@@ -196,7 +196,7 @@ class Schema
 				$select = str_replace (self::MACRO_SCOPE, $scope, $origin[1]);
 			else if ($origin[0] === self::COPY_FIELD)
 			{
-				$select = $source->get_column ($origin[1], $alias);
+				$select = $source->get_expression ($origin[1], $alias);
 
 				if ($select === null)
 					throw new \Exception ("can't copy from unknown field '$source->table.$origin[1]'");
@@ -478,7 +478,7 @@ class Schema
 					$comparer = $comparers['is'];
 
 				// Build field condition
-				$column = $this->get_column ($name, $alias);
+				$column = $this->get_expression ($name, $alias);
 
 				if ($column === null)
 					throw new \Exception ("can't filter on unknown field '$this->table.$name'");
@@ -548,12 +548,12 @@ class Schema
 
 			foreach ($link_relations as $parent_name => $foreign_name)
 			{
-				$foreign_column = $link_schema->get_column ($foreign_name, $link_alias);
+				$foreign_column = $link_schema->get_expression ($foreign_name, $link_alias);
 
 				if ($foreign_column === null)
 					throw new \Exception ("can't link unknown field $link_schema->table.$foreign_name to $this->table.$parent_name for relation '$name'");
 
-				$parent_column = $this->get_column ($parent_name, $alias);
+				$parent_column = $this->get_expression ($parent_name, $alias);
 
 				if ($parent_column === null)
 				{
@@ -635,7 +635,7 @@ class Schema
 			if ($name === self::FILTER_LINK)
 				continue;
 
-			$column = $this->get_column ($name, $alias);
+			$column = $this->get_expression ($name, $alias);
 
 			if ($column === null)
 				throw new \Exception ("can't order by unknown field '$this->table.$name'");
@@ -664,7 +664,7 @@ class Schema
 		return array (self::format_name ($match[1]), ($field[0] & self::FIELD_PRIMARY) !== 0);
 	}
 
-	private function get_column ($name, $alias)
+	private function get_expression ($name, $alias)
 	{
 		if (!isset ($this->fields[$name]))
 			return null;
