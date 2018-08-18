@@ -481,7 +481,6 @@ class Schema
 
 		$condition = '';
 		$params = array ();
-		$pattern = '/^(.*)\|([a-z]{1,4})$/';
 		$separator = false;
 
 		foreach ($filters as $name => $value)
@@ -492,36 +491,37 @@ class Schema
 			// Complex sub-condition group
 			if (is_array ($value) && is_numeric ($name))
 			{
-				list ($append_condition, $append_params) = $this->build_condition ($value, $alias, '(', ')');
+				list ($filter_condition, $filter_params) = $this->build_condition ($value, $alias, '(', ')');
 
-				$params = array_merge ($params, $append_params);
+				$params = array_merge ($params, $filter_params);
 			}
 
 			// Simple field condition
 			else
 			{
 				// Match name with custom comparison operator, e.g. "datetime|ge"
-				if (preg_match ($pattern, $name, $match) && isset ($comparers[$match[2]]))
+				if (preg_match ('/^(.*)\|([a-z]{1,4})$/', $name, $match) && isset ($comparers[$match[2]]))
 				{
-					$comparer = $comparers[$match[2]];
+					list ($lhs, $rhs) = $comparers[$match[2]];
+
 					$name = $match[1];
 				}
 
 				// Default to equality for non-null values
 				else if ($value !== null)
-					$comparer = $comparers['eq'];
+					list ($lhs, $rhs) = $comparers['eq'];
 
 				// Default to "is" operator otherwise
 				else
-					$comparer = $comparers['is'];
+					list ($lhs, $rhs) = $comparers['is'];
 
 				// Build field condition
-				$column = $this->get_expression ($name, $alias);
+				$expression = $this->get_expression ($name, $alias);
 
-				if ($column === null)
+				if ($expression === null)
 					throw new \Exception ("can't filter on unknown field '$this->table.$name'");
 
-				$append_condition = $comparer[0] . $column . $comparer[1];
+				$filter_condition = $lhs . $expression . $rhs;
 				$params[] = $value;
 			}
 
@@ -529,7 +529,7 @@ class Schema
 			if ($separator)
 				$condition .= $logical;
 
-			$condition .= $append_condition;
+			$condition .= $filter_condition;
 			$separator = true;
 		}
 
@@ -557,12 +557,12 @@ class Schema
 			$condition_params = array ();
 		}
 
-		$link = isset ($filters[self::FILTER_LINK]) ? $filters[self::FILTER_LINK] + $this->defaults : $this->defaults;
+		$links = isset ($filters[self::FILTER_LINK]) ? $filters[self::FILTER_LINK] + $this->defaults : $this->defaults;
 		$relation = '';
 		$relation_params = array ();
 		$select = '';
 
-		foreach ($link as $name => $children)
+		foreach ($links as $name => $children)
 		{
 			list ($link_schema, $link_flags, $link_relations) = $this->get_link ($name);
 
