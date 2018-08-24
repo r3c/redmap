@@ -8,9 +8,7 @@ Connect: <?php require ('suite/connect.php'); ?>
 
 Copy: <?php require ('suite/copy.php'); ?>
 
-Get (comparer): <?php require ('suite/get_comparer.php'); ?>
-
-Get (link): <?php require ('suite/get_link.php'); ?>
+Select: <?php require ('suite/select.php'); ?>
 
 Insert: <?php require ('suite/insert.php'); ?>
 

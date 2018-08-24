@@ -31,7 +31,7 @@ sql_connect ();
 test_insert
 (
 	$message->insert (array ('sender' => 3, 'recipient' => 4, 'time' => 500, 'text' => 'Hello, World!')),
-	$message->get (array ('id' => 3)),
+	$message->select (array ('id' => 3)),
 	array (array ('id' => 3, 'sender' => 3, 'recipient' => 4, 'time' => 500, 'text' => 'Hello, World!'))
 );
 
@@ -39,7 +39,7 @@ test_insert
 test_insert
 (
 	$message->insert (array ('sender' => new RedMap\Max (3), 'recipient' => new RedMap\Min (4), 'time' => new RedMap\Increment (100, 500), 'text' => new RedMap\Coalesce ('Hello, World!'))),
-	$message->get (array ('id' => 3)),
+	$message->select (array ('id' => 3)),
 	array (array ('id' => 3, 'sender' => 3, 'recipient' => 4, 'time' => 500, 'text' => 'Hello, World!'))
 );
 
@@ -47,7 +47,7 @@ test_insert
 test_insert
 (
 	$message->insert (array ('id' => 3, 'sender' => 42), RedMap\Schema::INSERT_UPSERT),
-	$message->get (array ('id' => 3)),
+	$message->select (array ('id' => 3)),
 	array (array ('id' => 3, 'sender' => 42, 'recipient' => 0, 'time' => 0, 'text' => ''))
 );
 
@@ -55,7 +55,7 @@ test_insert
 test_insert
 (
 	$message->insert (array ('id' => 3, 'sender' => new RedMap\Increment (1, 42)), RedMap\Schema::INSERT_UPSERT),
-	$message->get (array ('id' => 3)),
+	$message->select (array ('id' => 3)),
 	array (array ('id' => 3, 'sender' => 42, 'recipient' => 0, 'time' => 0, 'text' => ''))
 );
 
@@ -63,7 +63,7 @@ test_insert
 test_insert
 (
 	$message->insert (array ('id' => 2, 'sender' => 53, 'text' => 'Upserted!'), RedMap\Schema::INSERT_UPSERT),
-	$message->get (array ('id' => 2)),
+	$message->select (array ('id' => 2)),
 	array (array ('id' => 2, 'sender' => 53, 'recipient' => 1, 'time' => 1000, 'text' => 'Upserted!'))
 );
 
@@ -71,7 +71,7 @@ test_insert
 test_insert
 (
 	$message->insert (array ('id' => 2, 'sender' => new RedMap\Increment (1, 53), 'recipient' => new RedMap\Max (3), 'time' => new RedMap\Min (2000), 'text' => 'Upserted!'), RedMap\Schema::INSERT_UPSERT),
-	$message->get (array ('id' => 2)),
+	$message->select (array ('id' => 2)),
 	array (array ('id' => 2, 'sender' => 3, 'recipient' => 3, 'time' => 1000, 'text' => 'Upserted!'))
 );
 
@@ -79,7 +79,7 @@ test_insert
 test_insert
 (
 	$message->insert (array ('id' => 3, 'sender' => 1, 'recipient' => 9, 'time' => 0, 'text' => 'Replaced!'), RedMap\Schema::INSERT_REPLACE),
-	$message->get (array ('id' => 3)),
+	$message->select (array ('id' => 3)),
 	array (array ('id' => 3, 'sender' => 1, 'recipient' => 9, 'text' => 'Replaced!', 'time' => 0))
 );
 
@@ -87,7 +87,7 @@ test_insert
 test_insert
 (
 	$message->insert (array ('id' => 3, 'sender' => new RedMap\Coalesce (1), 'recipient' => 9, 'time' => 0, 'text' => 'Replaced!'), RedMap\Schema::INSERT_REPLACE),
-	$message->get (array ('id' => 3)),
+	$message->select (array ('id' => 3)),
 	array (array ('id' => 3, 'sender' => 1, 'recipient' => 9, 'text' => 'Replaced!', 'time' => 0))
 );
 
@@ -95,7 +95,7 @@ test_insert
 test_insert
 (
 	$message->insert (array ('id' => 2, 'recipient' => 7), RedMap\Schema::INSERT_REPLACE),
-	$message->get (array ('id' => 2)),
+	$message->select (array ('id' => 2)),
 	array (array ('id' => 2, 'sender' => 0, 'recipient' => 7, 'text' => '', 'time' => 0))
 );
 
@@ -103,7 +103,7 @@ test_insert
 test_insert
 (
 	$message->insert (array ('id' => 2, 'sender' => new RedMap\Min (5), 'recipient' => new RedMap\Max (0)), RedMap\Schema::INSERT_REPLACE),
-	$message->get (array ('id' => 2)),
+	$message->select (array ('id' => 2)),
 	array (array ('id' => 2, 'sender' => 5, 'recipient' => 0, 'text' => '', 'time' => 0))
 );
 

@@ -224,7 +224,7 @@ class Schema
 			case self::SET_INSERT:
 			case self::SET_REPLACE:
 			case self::SET_UPSERT:
-				list ($source_query, $source_params) = $source->get ($filters, $orders, $count, $offset);
+				list ($source_query, $source_params) = $source->select ($filters, $orders, $count, $offset);
 
 				foreach ($values as $column => $value)
 					$params[] = $value->initial;
@@ -279,41 +279,6 @@ class Schema
 		);
 	}
 
-	public function get ($filters = array (), $orders = array (), $count = null, $offset = null)
-	{
-		// Select columns from links to other schemas
-		$aliases = array ();
-		$unique = 0;
-
-		$alias = self::format_alias ($unique++);
-
-		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($filters, $alias, ' WHERE ', '', '', $aliases, $unique);
-
-		// Build "where", "order by" and "limit" clauses
-		$params = array_merge ($relation_params, $condition_params);
-		$sort = $this->build_sort ($orders, $aliases, $alias);
-
-		if ($count !== null)
-		{
-			$params[] = $offset !== null ? (int)$offset : 0;
-			$params[] = (int)$count;
-		}
-
-		return array
-		(
-			'SELECT ' . $this->build_select ($alias, '') . $select .
-			' FROM ' . self::format_name ($this->table) . ' ' . $alias .
-			$relation . $condition .
-			($sort
-				? ' ORDER BY ' . $sort
-				: '') .
-			($count
-				? ' LIMIT ' . self::MACRO_PARAM . self::SQL_NEXT . self::MACRO_PARAM
-				: ''),
-			$params
-		);
-	}
-
 	public function insert ($assignments, $mode = self::INSERT_DEFAULT)
 	{
 		if (count ($assignments) === 0)
@@ -355,6 +320,41 @@ class Schema
 			' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($insert_params), self::MACRO_PARAM)) . ')' .
 			$duplicate,
 			array_merge ($insert_params, $update_params)
+		);
+	}
+
+	public function select ($filters = array (), $orders = array (), $count = null, $offset = null)
+	{
+		// Select columns from links to other schemas
+		$aliases = array ();
+		$unique = 0;
+
+		$alias = self::format_alias ($unique++);
+
+		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($filters, $alias, ' WHERE ', '', '', $aliases, $unique);
+
+		// Build "where", "order by" and "limit" clauses
+		$params = array_merge ($relation_params, $condition_params);
+		$sort = $this->build_sort ($orders, $aliases, $alias);
+
+		if ($count !== null)
+		{
+			$params[] = $offset !== null ? (int)$offset : 0;
+			$params[] = (int)$count;
+		}
+
+		return array
+		(
+			'SELECT ' . $this->build_select ($alias, '') . $select .
+			' FROM ' . self::format_name ($this->table) . ' ' . $alias .
+			$relation . $condition .
+			($sort
+				? ' ORDER BY ' . $sort
+				: '') .
+			($count
+				? ' LIMIT ' . self::MACRO_PARAM . self::SQL_NEXT . self::MACRO_PARAM
+				: ''),
+			$params
 		);
 	}
 

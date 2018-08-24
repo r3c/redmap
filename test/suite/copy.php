@@ -47,7 +47,7 @@ sql_assert_execute ($target->copy
 
 sql_assert_compare
 (
-	$target->get (array (), array ('id' => true)),
+	$target->select (array (), array ('id' => true)),
 	array
 	(
 		array ('id' => 1, 'key' => 1, 'name' => 'Apple', 'counter' => 0),
@@ -73,7 +73,7 @@ sql_assert_execute ($target->copy
 
 sql_assert_compare
 (
-	$target->get (array (), array ('id' => true)),
+	$target->select (array (), array ('id' => true)),
 	array
 	(
 		array ('id' => 1, 'key' => 0, 'name' => 'Ananas', 'counter' => 1),
@@ -98,7 +98,7 @@ sql_assert_execute ($target->copy
 
 sql_assert_compare
 (
-	$target->get (array (), array ('id' => true)),
+	$target->select (array (), array ('id' => true)),
 	array
 	(
 		array ('id' => 1, 'key' => 0, 'name' => 'Ananas', 'counter' => 2),
@@ -167,7 +167,7 @@ sql_assert_execute ($target->copy
 
 sql_assert_compare
 (
-	$target->get (array (), array ('id' => true)),
+	$target->select (array (), array ('id' => true)),
 	array
 	(
 		array ('id' => 1, 'key' => 0, 'name' => 'Ananas', 'counter' => 2),

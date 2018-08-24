@@ -44,7 +44,7 @@ sql_connect ();
 test_update
 (
 	$log->update (array ('score' => 2), array ('id' => 1)),
-	$log->get (array ('id' => 1)),
+	$log->select (array ('id' => 1)),
 	array (array ('id' => 1, 'score' => 2))
 );
 
@@ -52,7 +52,7 @@ test_update
 test_update
 (
 	$log->update (array ('score' => new RedMap\Increment (3)), array ('id' => 2)),
-	$log->get (array ('id' => 2)),
+	$log->select (array ('id' => 2)),
 	array (array ('id' => 2, 'score' => 8))
 );
 
@@ -60,7 +60,7 @@ test_update
 test_update
 (
 	$log->update (array ('score' => new RedMap\Increment (-3)), array ('id' => 2)),
-	$log->get (array ('id' => 2)),
+	$log->select (array ('id' => 2)),
 	array (array ('id' => 2, 'score' => 2))
 );
 
@@ -68,7 +68,7 @@ test_update
 test_update
 (
 	$log->update (array ('score' => new RedMap\Coalesce (5)), array ('id' => 3)),
-	$log->get (array ('id' => 3)),
+	$log->select (array ('id' => 3)),
 	array (array ('id' => 3, 'score' => 1))
 );
 
@@ -76,7 +76,7 @@ test_update
 test_update
 (
 	$log->update (array ('score' => new RedMap\Coalesce (1)), array ('id' => 4)),
-	$log->get (array ('id' => 4)),
+	$log->select (array ('id' => 4)),
 	array (array ('id' => 4, 'score' => 1))
 );
 
@@ -84,7 +84,7 @@ test_update
 test_update
 (
 	$log->update (array ('score' => new RedMap\Max (0)), array ('id' => 2)),
-	$log->get (array ('id' => 2)),
+	$log->select (array ('id' => 2)),
 	array (array ('id' => 2, 'score' => 5))
 );
 
@@ -92,7 +92,7 @@ test_update
 test_update
 (
 	$log->update (array ('score' => new RedMap\Max (7)), array ('id' => 2)),
-	$log->get (array ('id' => 2)),
+	$log->select (array ('id' => 2)),
 	array (array ('id' => 2, 'score' => 7))
 );
 
@@ -100,7 +100,7 @@ test_update
 test_update
 (
 	$log->update (array ('score' => new RedMap\Min (7)), array ('id' => 2)),
-	$log->get (array ('id' => 2)),
+	$log->select (array ('id' => 2)),
 	array (array ('id' => 2, 'score' => 5))
 );
 
@@ -108,7 +108,7 @@ test_update
 test_update
 (
 	$log->update (array ('score' => new RedMap\Min (2)), array ('id' => 2)),
-	$log->get (array ('id' => 2)),
+	$log->select (array ('id' => 2)),
 	array (array ('id' => 2, 'score' => 2))
 );
 
@@ -116,7 +116,7 @@ test_update
 test_update
 (
 	$log->update (array ('score' => 3), array ('+' => array ('player' => array ('id' => 1)))),
-	$log->get (array ('id|le' => 2), array ('id' => true)),
+	$log->select (array ('id|le' => 2), array ('id' => true)),
 	array (array ('id' => 1, 'score' => 3), array ('id' => 2, 'score' => 3))
 );
 
@@ -124,7 +124,7 @@ test_update
 test_update
 (
 	$log->update (array ('score' => new RedMap\Increment (4)), array ('+' => array ('player' => array ('id' => 1)))),
-	$log->get (array ('id|le' => 2), array ('id' => true)),
+	$log->select (array ('id|le' => 2), array ('id' => true)),
 	array (array ('id' => 1, 'score' => 7), array ('id' => 2, 'score' => 9))
 );
 
@@ -132,7 +132,7 @@ test_update
 test_update
 (
 	$log->update (array ('score' => new RedMap\Coalesce (3)), array ('+' => array ('player' => array ('id' => 2)))),
-	$log->get (array ('id|ge' => 3), array ('id' => true)),
+	$log->select (array ('id|ge' => 3), array ('id' => true)),
 	array (array ('id' => 3, 'score' => 1), array ('id' => 4, 'score' => 3))
 );
 
