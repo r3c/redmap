@@ -11,7 +11,7 @@ function sql_assert_compare ($pair, $expected)
 	assert ($returned !== null, 'Get query failed');
 	assert (count ($expected) === count ($returned), 'Query returned ' . count ($returned) . ' row(s) instead of ' . count ($expected));
 
-	for ($i = 0; $i < count ($expected); ++$i)
+	for ($i = 0; $i < count ($returned); ++$i)
 	{
 		$expected_row = $expected[$i];
 		$returned_row = $returned[$i];
