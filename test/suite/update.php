@@ -4,7 +4,7 @@ require_once ('../src/drivers/mysqli.php');
 require_once ('../src/schema.php');
 require_once ('helper/sql.php');
 
-function test ($update, $get, $expected)
+function test_update ($update, $get, $expected)
 {
 	sql_import ('setup/update_start.sql');
 	sql_assert_execute ($update);
@@ -41,7 +41,7 @@ $log = new RedMap\Schema
 sql_connect ();
 
 // Update, 1 table, constant
-test
+test_update
 (
 	$log->update (array ('score' => 2), array ('id' => 1)),
 	$log->get (array ('id' => 1)),
@@ -49,7 +49,7 @@ test
 );
 
 // Update, 1 table, increment (positive)
-test
+test_update
 (
 	$log->update (array ('score' => new RedMap\Increment (3)), array ('id' => 2)),
 	$log->get (array ('id' => 2)),
@@ -57,7 +57,7 @@ test
 );
 
 // Update, 1 table, increment (negative)
-test
+test_update
 (
 	$log->update (array ('score' => new RedMap\Increment (-3)), array ('id' => 2)),
 	$log->get (array ('id' => 2)),
@@ -65,7 +65,7 @@ test
 );
 
 // Update, 1 table, coalesce (keep previous)
-test
+test_update
 (
 	$log->update (array ('score' => new RedMap\Coalesce (5)), array ('id' => 3)),
 	$log->get (array ('id' => 3)),
@@ -73,7 +73,7 @@ test
 );
 
 // Update, 1 table, coalesce (use value)
-test
+test_update
 (
 	$log->update (array ('score' => new RedMap\Coalesce (1)), array ('id' => 4)),
 	$log->get (array ('id' => 4)),
@@ -81,7 +81,7 @@ test
 );
 
 // Update, 1 table, max (keep previous)
-test
+test_update
 (
 	$log->update (array ('score' => new RedMap\Max (0)), array ('id' => 2)),
 	$log->get (array ('id' => 2)),
@@ -89,7 +89,7 @@ test
 );
 
 // Update, 1 table, max (use value)
-test
+test_update
 (
 	$log->update (array ('score' => new RedMap\Max (7)), array ('id' => 2)),
 	$log->get (array ('id' => 2)),
@@ -97,7 +97,7 @@ test
 );
 
 // Update, 1 table, min (keep previous)
-test
+test_update
 (
 	$log->update (array ('score' => new RedMap\Min (7)), array ('id' => 2)),
 	$log->get (array ('id' => 2)),
@@ -105,7 +105,7 @@ test
 );
 
 // Update, 1 table, min (use value)
-test
+test_update
 (
 	$log->update (array ('score' => new RedMap\Min (2)), array ('id' => 2)),
 	$log->get (array ('id' => 2)),
@@ -113,7 +113,7 @@ test
 );
 
 // Update, 2 tables, constant
-test
+test_update
 (
 	$log->update (array ('score' => 3), array ('+' => array ('player' => array ('id' => 1)))),
 	$log->get (array ('id|le' => 2), array ('id' => true)),
@@ -121,7 +121,7 @@ test
 );
 
 // Update, 2 tables, increment
-test
+test_update
 (
 	$log->update (array ('score' => new RedMap\Increment (4)), array ('+' => array ('player' => array ('id' => 1)))),
 	$log->get (array ('id|le' => 2), array ('id' => true)),
@@ -129,7 +129,7 @@ test
 );
 
 // Update, 2 tables, coalesce
-test
+test_update
 (
 	$log->update (array ('score' => new RedMap\Coalesce (3)), array ('+' => array ('player' => array ('id' => 2)))),
 	$log->get (array ('id|ge' => 3), array ('id' => true)),

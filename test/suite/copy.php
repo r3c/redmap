@@ -56,7 +56,7 @@ sql_assert_compare
 );
 
 // Replace
-sql_assert_execute ($source->set (RedMap\Schema::SET_UPDATE, array ('id' => 1, 'name' => 'Ananas')));
+sql_assert_execute ($source->update (array ('name' => 'Ananas'), array ('id' => 1)));
 sql_assert_execute ($target->copy
 (
 	RedMap\Schema::SET_REPLACE,

@@ -97,6 +97,9 @@ class Schema
 	const FIELD_PRIMARY = 2;
 	const FILTER_GROUP = '~';
 	const FILTER_LINK = '+';
+	const INSERT_DEFAULT = 0;
+	const INSERT_REPLACE = 1;
+	const INSERT_UPSERT = 2;
 	const LINK_IMPLICIT = 1;
 	const LINK_OPTIONAL = 2;
 	const MACRO_PARAM = '?';
@@ -311,99 +314,48 @@ class Schema
 		);
 	}
 
-	public function set ($mode, $pairs)
+	public function insert ($assignments, $mode = self::INSERT_DEFAULT)
 	{
-		// Extract primary values (indices) and mutable values (changes)
-		$changes = array ();
-		$indices = array ();
+		if (count ($assignments) === 0)
+			return self::SQL_NOOP;
 
-		foreach ($pairs as $name => $value)
+		$insert = '';
+		$insert_params = array ();
+
+		$update = '';
+		$update_params = array ();
+
+		foreach ($assignments as $name => $value)
 		{
-			list ($column, $primary) = $this->get_assignment ($name);
+			list ($column) = $this->get_assignment ($name);
+			$value = Value::wrap ($value);
 
-			if ($primary)
-				$indices[$column] = $value;
-			else
-				$changes[$column] = $value;
+			$insert .= self::SQL_NEXT . $column;
+			$insert_params[] = $value->initial;
+
+			if ($mode === self::INSERT_UPSERT)
+			{
+				$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
+				$update_params[] = $value->update;
+			}
 		}
 
-		// Generate set query for requested mode
-		switch ($mode)
-		{
-			case self::SET_INSERT:
-			case self::SET_REPLACE:
-			case self::SET_UPSERT:
-				$params = array ();
-				$update = '';
+		$duplicate = count ($update_params) > 0
+			? ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT))
+			: '';
 
-				foreach ($changes as $column => $value)
-					$params[] = Value::wrap ($value)->initial;
+		$verb = $mode === self::INSERT_REPLACE
+			? 'REPLACE'
+			: 'INSERT';
 
-				foreach ($indices as $column => $value)
-					$params[] = $value;
-
-				if ($mode === self::SET_UPSERT && count ($changes) > 0)
-				{
-					foreach ($changes as $column => $value)
-					{
-						$value = Value::wrap ($value);
-
-						$params[] = $value->update;
-						$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
-					}
-
-					$update = ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT));
-				}
-
-				$columns = array_merge (array_keys ($changes), array_keys ($indices));
-
-				return array
-				(
-					($mode === self::SET_REPLACE ? 'REPLACE' : 'INSERT') . ' INTO ' . self::format_name ($this->table) .
-					' (' . implode (self::SQL_NEXT, $columns) . ')' .
-					' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($columns), self::MACRO_PARAM)) . ')' .
-					$update,
-					$params
-				);
-
-			case self::SET_UPDATE:
-				if (count ($changes) === 0)
-					break;
-
-				$params = array ();
-				$update = '';
-				$where = '';
-
-				foreach ($changes as $column => $change)
-				{
-					$value = Value::wrap ($change);
-
-					$params[] = $value->update;
-					$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
-				}
-
-				foreach ($indices as $column => $value)
-				{
-					if ($where !== '')
-						$where .= ' AND ';
-					else
-						$where .= ' WHERE ';
-
-					$params[] = $value;
-					$where .= $column . ' = ' . self::MACRO_PARAM;
-				}
-
-				return array
-				(
-					'UPDATE ' . self::format_name ($this->table) .
-					' SET ' . substr ($update, strlen (self::SQL_NEXT)) .
-					$where,
-					$params
-				);
-
-			default:
-				throw new \Exception ("invalid mode '$mode'");
-		}
+		return array
+		(
+			$verb . ' INTO ' . self::format_name ($this->table) .
+			' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
+			' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($insert_params), self::MACRO_PARAM)) . ')' .
+			$duplicate,
+			array_merge ($insert_params, $update_params)
+		);
 	}
 
 	public function update ($assignments, $filters)
@@ -417,7 +369,7 @@ class Schema
 
 		foreach ($assignments as $name => $value)
 		{
-			list ($column, $unused) = $this->get_assignment ($name);
+			list ($column) = $this->get_assignment ($name);
 			$value = Value::wrap ($value);
 
 			$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
