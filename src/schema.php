@@ -196,12 +196,7 @@ class Schema
 			if ($origin[0] === self::COPY_EXPRESSION)
 				$select = str_replace (self::MACRO_SCOPE, $scope, $origin[1]);
 			else if ($origin[0] === self::COPY_FIELD)
-			{
 				$select = $source->get_expression ($origin[1], $alias);
-
-				if ($select === null)
-					throw new \Exception ("can't copy from unknown field '$source->table.$origin[1]'");
-			}
 			else
 			{
 				$value = Value::wrap ($origin[1]);
@@ -528,12 +523,7 @@ class Schema
 					list ($lhs, $rhs) = $comparers['is'];
 
 				// Build field condition
-				$expression = $this->get_expression ($name, $source);
-
-				if ($expression === null)
-					throw new \Exception ("can't filter on unknown field '$this->table.$name'");
-
-				$condition .= $lhs . $expression . $rhs;
+				$condition .= $lhs . $this->get_expression ($name, $source) . $rhs;
 				$params[] = $value;
 			}
 		}
@@ -591,15 +581,15 @@ class Schema
 			{
 				$foreign_column = $link_schema->get_expression ($foreign_name, $link_alias);
 
-				if ($foreign_column === null)
-					throw new \Exception ("can't link unknown field $link_schema->table.$foreign_name to $this->table.$parent_name for relation '$name'");
+				// Connection depends on field from parent schema
+				if (isset ($this->fields[$parent_name]))
+					$parent_column = $this->get_expression ($parent_name, $alias);
 
-				$parent_column = $this->get_expression ($parent_name, $alias);
-
-				if ($parent_column === null)
+				// Connection depends on manually provided value
+				else
 				{
 					if ($children === null || !isset ($children[$parent_name]))
-						throw new \Exception ("can't link missing value '$parent_name' to $link_schema->table.$foreign_name for relation '$name' in schema $this->table");
+						throw new \Exception ("relation from $this->table to $link_schema->table.$foreign_name through link '$name' depends on unspecified value '$parent_name'");
 
 					$connect_relation_params[] = $children[$parent_name];
 					$parent_column = self::MACRO_PARAM;
@@ -634,25 +624,24 @@ class Schema
 		return array ($select, $relation, $relation_params, $condition, $condition_params);
 	}
 
-	private function build_select ($alias, $namespace)
+	private function build_select ($source, $namespace)
 	{
-		$columns = '';
-		$scope = $alias . '.';
+		$query = '';
 
 		foreach ($this->fields as $name => $field)
 		{
 			if (($field[0] & self::FIELD_INTERNAL) !== 0)
 				continue;
 
-			$columns .= self::SQL_NEXT . str_replace (self::MACRO_SCOPE, $scope, $field[1]) . ' ' . self::format_name ($namespace . $name);
+			$query .= self::SQL_NEXT . $this->get_expression ($name, $source) . ' ' . self::format_name ($namespace . $name);
 		}
 
-		return (string)substr ($columns, strlen (self::SQL_NEXT));
+		return (string)substr ($query, strlen (self::SQL_NEXT));
 	}
 
-	private function build_sort ($orders, $aliases, $alias)
+	private function build_sort ($orders, $aliases, $source)
 	{
-		$sort = '';
+		$query = '';
 
 		// Build ordering rules on linked tables
 		if (isset ($orders[self::FILTER_LINK]))
@@ -666,7 +655,7 @@ class Schema
 
 				list ($link_alias, $link_aliases) = $aliases[$name];
 
-				$sort .= self::SQL_NEXT . $link_schema->build_sort ($link_orders, $link_aliases, $link_alias);
+				$query .= self::SQL_NEXT . $link_schema->build_sort ($link_orders, $link_aliases, $link_alias);
 			}
 		}
 
@@ -676,17 +665,17 @@ class Schema
 			if ($name === self::FILTER_LINK)
 				continue;
 
-			$column = $this->get_expression ($name, $alias);
-
-			if ($column === null)
-				throw new \Exception ("can't order by unknown field '$this->table.$name'");
-
-			$sort .= self::SQL_NEXT . $column . ($ascending ? '' : ' DESC');
+			$query .= self::SQL_NEXT . $this->get_expression ($name, $source) . ($ascending ? '' : ' DESC');
 		}
 
-		return (string)substr ($sort, strlen (self::SQL_NEXT));
+		return (string)substr ($query, strlen (self::SQL_NEXT));
 	}
 
+	/*
+	** Get assignable column from given field name.
+	** $name:	field name
+	** return:	(SQL fragment, true if field is primary)
+	*/
 	private function get_assignment ($name)
 	{
 		static $pattern;
@@ -705,12 +694,18 @@ class Schema
 		return array (self::format_name ($match[1]), ($field[0] & self::FIELD_PRIMARY) !== 0);
 	}
 
-	private function get_expression ($name, $alias)
+	/*
+	** Get selectable expression from given field name.
+	** $name:	field name
+	** $source:	source table alias
+	** return:	SQL fragment
+	*/
+	private function get_expression ($name, $source)
 	{
 		if (!isset ($this->fields[$name]))
-			return null;
+			throw new \Exception ("cannot reference unknown field '$this->table.$name'");
 
-		return str_replace (self::MACRO_SCOPE, $alias . '.', $this->fields[$name][1]);
+		return str_replace (self::MACRO_SCOPE, $source . '.', $this->fields[$name][1]);
 	}
 
 	/*
