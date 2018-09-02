@@ -44,7 +44,7 @@ function sql_connect ()
 		assert (false, 'Query execution failed: ' . $driver->error ());
 	});
 
-	assert ($driver->connect ('redmap', 'redmap', 'redmap'), 'Connection to database');
+	assert ($driver->connect ('root', '', 'redmap'), 'Connection to database');
 }
 
 function sql_import ($path)
