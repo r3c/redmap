@@ -325,7 +325,7 @@ class Schema
 
 	public function select ($filters = array (), $orders = array (), $count = null, $offset = null)
 	{
-		// Select columns from links to other schemas
+		// Build columns list from links to other schemas for "select" clause
 		$aliases = array ();
 		$unique = 0;
 
@@ -333,27 +333,28 @@ class Schema
 
 		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($filters, $alias, ' WHERE ', '', '', $aliases, $unique);
 
-		// Build "where", "order by" and "limit" clauses
 		$params = array_merge ($relation_params, $condition_params);
+
+		// Build filtering, ordering and pagination for "order by" and "limit" clauses
+		$pagination = '';
 		$sort = $this->build_sort ($orders, $aliases, $alias);
+
+		if ($sort !== '')
+			$pagination .= ' ORDER BY ' . $sort;
 
 		if ($count !== null)
 		{
+			$pagination .= ' LIMIT ' . self::MACRO_PARAM . self::SQL_NEXT . self::MACRO_PARAM;
 			$params[] = $offset !== null ? (int)$offset : 0;
 			$params[] = (int)$count;
 		}
 
+		// Build statement
 		return array
 		(
 			'SELECT ' . $this->build_select ($alias, '') . $select .
 			' FROM ' . self::format_name ($this->table) . ' ' . $alias .
-			$relation . $condition .
-			($sort
-				? ' ORDER BY ' . $sort
-				: '') .
-			($count
-				? ' LIMIT ' . self::MACRO_PARAM . self::SQL_NEXT . self::MACRO_PARAM
-				: ''),
+			$relation . $condition . $pagination,
 			$params
 		);
 	}
