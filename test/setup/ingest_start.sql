@@ -18,3 +18,7 @@ CREATE TABLE `target` (
   `counter` int(10) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `target` (`id`, `key`, `name`, `counter`) VALUES
+(3, 17, 'Foo', 17),
+(4, 42, 'Bar', 42);

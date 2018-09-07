@@ -15,7 +15,7 @@ foreach (array ('score_memory', 'score_myisam') as $table)
 		$table,
 		array
 		(
-			'player'	=> array (RedMap\Schema::FIELD_PRIMARY),
+			'player'	=> null,
 			'value'		=> null
 		)
 	);

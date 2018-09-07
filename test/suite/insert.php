@@ -17,7 +17,7 @@ $message = new RedMap\Schema
 	'message',
 	array
 	(
-		'id'		=> array (RedMap\Schema::FIELD_PRIMARY),
+		'id'		=> null,
 		'sender'	=> null,
 		'recipient'	=> null,
 		'text'		=> null,

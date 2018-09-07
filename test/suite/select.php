@@ -9,7 +9,7 @@ $company = new RedMap\Schema
 	'company',
 	array
 	(
-		'id'	=> array (RedMap\Schema::FIELD_PRIMARY),
+		'id'	=> null,
 		'name'	=> null,
 		'ipo'	=> null
 	)
@@ -21,7 +21,7 @@ $employee = new RedMap\Schema
 	array
 	(
 		'company'	=> array (RedMap\Schema::FIELD_INTERNAL),
-		'id'		=> array (RedMap\Schema::FIELD_PRIMARY),
+		'id'		=> null,
 		'manager'	=> array (RedMap\Schema::FIELD_INTERNAL),
 		'name'		=> null
 	),
@@ -39,8 +39,8 @@ $report = new RedMap\Schema
 	'report',
 	array
 	(
-		'employee'	=> array (RedMap\Schema::FIELD_PRIMARY),
-		'day'		=> array (RedMap\Schema::FIELD_PRIMARY),
+		'employee'	=> null,
+		'day'		=> null,
 		'summary'	=> null
 	)
 );

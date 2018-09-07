@@ -90,13 +90,11 @@ class Schema
 {
 	const CLEAN_OPTIMIZE = 0;
 	const CLEAN_TRUNCATE = 1;
-	const COPY_EXPRESSION = 0;
-	const COPY_FIELD = 1;
-	const COPY_VALUE = 2;
 	const FIELD_INTERNAL = 1;
-	const FIELD_PRIMARY = 2;
 	const FILTER_GROUP = '~';
 	const FILTER_LINK = '+';
+	const INGEST_COLUMN = 0;
+	const INGEST_VALUE = 1;
 	const INSERT_DEFAULT = 0;
 	const INSERT_REPLACE = 1;
 	const INSERT_UPSERT = 2;
@@ -181,90 +179,7 @@ class Schema
 		}
 	}
 
-	public function copy ($mode, $pairs, $source, $filters = array (), $orders = array (), $count = null, $offset = null)
-	{
-		$alias = self::format_name ('_s');
-		$scope = $alias . '.';
-
-		// Extract target fields from input pairs
-		$indices = array ();
-		$params = array ();
-		$selects = array ();
-		$values = array ();
-
-		foreach ($pairs as $name => $origin)
-		{
-			list ($column, $primary) = $this->get_assignment ($name);
-
-			if ($origin[0] === self::COPY_EXPRESSION)
-				$select = str_replace (self::MACRO_SCOPE, $scope, $origin[1]);
-			else if ($origin[0] === self::COPY_FIELD)
-				$select = $source->get_expression ($origin[1], $alias);
-			else
-			{
-				$value = Value::wrap ($origin[1]);
-
-				if ($primary)
-					$indices[$column] = $value->initial;
-				else
-					$values[$column] = $value;
-
-				continue;
-			}
-
-			if ($primary)
-				$indices[$column] = $select;
-			else
-				$selects[$column] = $select;			
-		}
-
-		// Generate copy query for requested mode
-		switch ($mode)
-		{
-			case self::SET_INSERT:
-			case self::SET_REPLACE:
-			case self::SET_UPSERT:
-				list ($source_query, $source_params) = $source->select ($filters, $orders, $count, $offset);
-
-				foreach ($values as $column => $value)
-					$params[] = $value->initial;
-
-				$params = array_merge ($params, $source_params);
-				$update = '';
-
-				if ($mode === self::SET_UPSERT && count ($selects) + count ($values) > 0)
-				{
-					foreach ($selects as $column => $select)
-						$update .= self::SQL_NEXT . $column . ' = ' . $select;
-
-					foreach ($values as $column => $value)
-					{
-						$params[] = $value->update;
-						$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
-					}
-
-					$update = ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT));
-				}
-
-				$columns = array_merge (array_keys ($indices), array_keys ($selects), array_keys ($values));
-				$values = array_merge ($indices, $selects, array_fill (0, count ($values), self::MACRO_PARAM));
-
-				return array
-				(
-					($mode === self::SET_REPLACE ? 'REPLACE' : 'INSERT') . ' INTO ' . self::format_name ($this->table) .
-					' (' . implode (self::SQL_NEXT, $columns) . ')' .
-					' SELECT ' . implode (self::SQL_NEXT, $values) .
-					' FROM (' . $source_query . ') ' . $alias .
-					$update,
-					$params
-				);
-
-			default:
-				throw new \Exception ("invalid mode '$mode'");
-		}
-	}
-
-	public function delete ($filters)
+	public function delete ($filters = array ())
 	{
 		$alias = self::format_name ('_0');
 
@@ -276,6 +191,88 @@ class Schema
 			(' USING ' . self::format_name ($this->table) . ' ' . $alias) .
 			($condition !== '' ? ' WHERE ' . $condition : ''),
 			$params
+		);
+	}
+
+	public function ingest ($assignments, $mode, $source, $filters = array (), $orders = array (), $count = null, $offset = null)
+	{
+		if (count ($assignments) === 0)
+			return self::SQL_NOOP;
+
+		$alias = self::format_alias (0);
+
+		$ingest = '';
+		$ingest_params = array ();
+
+		$insert = '';
+
+		$update = '';
+		$update_params = array ();
+
+		foreach ($assignments as $name => $assignment)
+		{
+			list ($type, $value) = $assignment;
+
+			$column = $this->get_assignment ($name);
+			$insert .= self::SQL_NEXT . $column;
+
+			switch ($type)
+			{
+				case self::INGEST_COLUMN:
+					// Make sure parent schema exist
+					$fields = explode ($this->separator, $value);
+					$schema = $source;
+
+					for ($i = 0; $i + 1 < count ($fields); ++$i)
+						list ($schema) = $schema->get_link ($fields[$i]);
+
+					// Make sure field exists in target schema
+					$schema->get_expression ($fields[count ($fields) - 1], '');
+
+					// Emit unchanged reference
+					$ingest .= self::SQL_NEXT . self::format_name ($value);
+
+					if ($mode === self::INSERT_UPSERT)
+						$update .= self::SQL_NEXT . $column . ' = ' . $alias . '.' . self::format_name ($value);
+
+					break;
+
+				case self::INGEST_VALUE:
+					$value = Value::wrap ($value);
+
+					$ingest .= self::SQL_NEXT . self::MACRO_PARAM;
+					$ingest_params[] = $value->initial;
+
+					if ($mode === self::INSERT_UPSERT)
+					{
+						$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
+						$update_params[] = $value->update;
+					}
+
+					break;
+
+				default:
+					throw new \Exception ("invalid assignment type '$type'");
+			}
+		}
+
+		list ($select, $select_params) = $source->select ($filters, $orders, $count, $offset);
+
+		$duplicate = count ($update_params) > 0
+			? ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT))
+			: '';
+
+		$verb = $mode === self::INSERT_REPLACE
+			? 'REPLACE'
+			: 'INSERT';
+
+		return array
+		(
+			$verb . ' INTO ' . self::format_name ($this->table) .
+			' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
+			' SELECT ' . substr ($ingest, strlen (self::SQL_NEXT)) . ' FROM (' . $select . ') ' . $alias .
+			$duplicate,
+			array_merge ($ingest_params, $select_params, $update_params)
 		);
 	}
 
@@ -292,7 +289,7 @@ class Schema
 
 		foreach ($assignments as $name => $value)
 		{
-			list ($column) = $this->get_assignment ($name);
+			$column = $this->get_assignment ($name);
 			$value = Value::wrap ($value);
 
 			$insert .= self::SQL_NEXT . $column;
@@ -327,7 +324,7 @@ class Schema
 	{
 		// Build columns list from links to other schemas for "select" clause
 		$aliases = array ();
-		$unique = 0;
+		$unique = 1;
 
 		$alias = self::format_alias ($unique++);
 
@@ -370,7 +367,7 @@ class Schema
 
 		foreach ($assignments as $name => $value)
 		{
-			list ($column) = $this->get_assignment ($name);
+			$column = $this->get_assignment ($name);
 			$value = Value::wrap ($value);
 
 			$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
@@ -644,7 +641,7 @@ class Schema
 		if (!preg_match ($pattern, $field[1], $match))
 			throw new \Exception ("can't assign to read-only field '$this->table.$name'");
 
-		return array (self::format_name ($match[1]), ($field[0] & self::FIELD_PRIMARY) !== 0);
+		return self::format_name ($match[1]);
 	}
 
 	/*
