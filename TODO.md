@@ -6,6 +6,8 @@ TODO
 
 - Switch [gs]et_primary methods to protected
 - Implement PDO driver
+- Replace FIELD_INTERNAL by naming convention e.g. ".name"
+- Factorize common code between "ingest" and "insert" methods
 
 DONE
 ----
