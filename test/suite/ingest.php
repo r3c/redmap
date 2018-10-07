@@ -12,9 +12,9 @@ function test_ingest ($ingest, $get, $expected)
 	sql_import ('setup/ingest_stop.sql');
 }
 
-$source = new RedMap\Schema
+$category = new RedMap\Schema
 (
-	'source',
+	'category',
 	array
 	(
 		'id'	=> null,
@@ -22,15 +22,31 @@ $source = new RedMap\Schema
 	)
 );
 
-$target = new RedMap\Schema
+$food = new RedMap\Schema
 (
-	'target',
+	'food',
+	array
+	(
+		'category'	=> null,
+		'id'		=> null,
+		'name'		=> null
+	),
+	'__',
+	array
+	(
+		'category'	=> array ($category, 0, array ('category' => 'id'))
+	)
+);
+
+$stock = new RedMap\Schema
+(
+	'stock',
 	array
 	(
 		'id'		=> null,
-		'key'		=> null,
 		'name'		=> null,
-		'counter'	=> null
+		'price'		=> null,
+		'quantity'	=> null
 	)
 );
 
@@ -39,101 +55,126 @@ sql_connect ();
 // Insert
 test_ingest
 (
-	$target->ingest
+	$stock->ingest
 	(
 		array
 		(
 			'id'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
-			'key'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
 			'name'		=> array (RedMap\Schema::INGEST_COLUMN, 'name'),
-			'counter'	=> array (RedMap\Schema::INGEST_VALUE, 0)
+			'price'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
+			'quantity'	=> array (RedMap\Schema::INGEST_VALUE, 0)
 		),
 		RedMap\Schema::INSERT_DEFAULT,
-		$source,
+		$food,
 		array ('id|le' => 2)
 	),
-	$target->select (array (), array ('id' => true)),
+	$stock->select (array (), array ('id' => true)),
 	array
 	(
-		array ('id' => 1, 'key' => 1, 'name' => 'Apple', 'counter' => 0),
-		array ('id' => 2, 'key' => 2, 'name' => 'Banana', 'counter' => 0),
-		array ('id' => 3, 'key' => 17, 'name' => 'Foo', 'counter' => 17),
-		array ('id' => 4, 'key' => 42, 'name' => 'Bar', 'counter' => 42)
+		array ('id' => 1, 'name' => 'Apple', 'price' => 1, 'quantity' => 0),
+		array ('id' => 2, 'name' => 'Banana', 'price' => 2, 'quantity' => 0),
+		array ('id' => 3, 'name' => 'Foo', 'price' => 5, 'quantity' => 17),
+		array ('id' => 4, 'name' => 'Bar', 'price' => 7, 'quantity' => 42)
+	)
+);
+
+// Insert, child reference
+test_ingest
+(
+	$stock->ingest
+	(
+		array
+		(
+			'id'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
+			'name'		=> array (RedMap\Schema::INGEST_COLUMN, 'category__name'),
+			'price'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
+			'quantity'	=> array (RedMap\Schema::INGEST_VALUE, 0)
+		),
+		RedMap\Schema::INSERT_DEFAULT,
+		$food,
+		array ('id' => 1, '+' => array ('category' => null)) // FIXME [ingest-nested-implicit]: no error is raised when "category" is not linked here (and missing from selected columns)
+	),
+	$stock->select (array (), array ('id' => true)),
+	array
+	(
+		array ('id' => 1, 'name' => 'Fruit', 'price' => 1, 'quantity' => 0),
+		array ('id' => 3, 'name' => 'Foo', 'price' => 5, 'quantity' => 17),
+		array ('id' => 4, 'name' => 'Bar', 'price' => 7, 'quantity' => 42)
 	)
 );
 
 // Replace
 test_ingest
 (
-	$target->ingest
+	$stock->ingest
 	(
 		array
 		(
 			'id'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
-			'key'		=> array (RedMap\Schema::INGEST_VALUE, 0),
 			'name'		=> array (RedMap\Schema::INGEST_COLUMN, 'name'),
-			'counter'	=> array (RedMap\Schema::INGEST_VALUE, 1),
+			'price'		=> array (RedMap\Schema::INGEST_VALUE, 0),
+			'quantity'	=> array (RedMap\Schema::INGEST_VALUE, 1),
 		),
 		RedMap\Schema::INSERT_REPLACE,
-		$source,
+		$food,
 		array ('id|ge' => 3)
 	),
-	$target->select (array (), array ('id' => true)),
+	$stock->select (array (), array ('id' => true)),
 	array
 	(
-		array ('id' => 3, 'key' => 0, 'name' => 'Carrot', 'counter' => 1),
-		array ('id' => 4, 'key' => 0, 'name' => 'Orange', 'counter' => 1)
+		array ('id' => 3, 'name' => 'Carrot', 'price' => 0, 'quantity' => 1),
+		array ('id' => 4, 'name' => 'Orange', 'price' => 0, 'quantity' => 1)
 	)
 );
 
 // Upsert
 test_ingest
 (
-	$target->ingest
+	$stock->ingest
 	(
 		array
 		(
 			'id'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
-			'key'		=> array (RedMap\Schema::INGEST_VALUE, 7),
 			'name'		=> array (RedMap\Schema::INGEST_COLUMN, 'name'),
-			'counter'	=> array (RedMap\Schema::INGEST_VALUE, 2),
+			'price'		=> array (RedMap\Schema::INGEST_VALUE, 3),
+			'quantity'	=> array (RedMap\Schema::INGEST_VALUE, 2),
 		),
 		RedMap\Schema::INSERT_UPSERT,
-		$source,
+		$food,
 		array ('id|le' => 3)
 	),
-	$target->select (array (), array ('id' => true)),
+	$stock->select (array (), array ('id' => true)),
 	array
 	(
-		array ('id' => 1, 'key' => 7, 'name' => 'Apple', 'counter' => 2),
-		array ('id' => 2, 'key' => 7, 'name' => 'Banana', 'counter' => 2),
-		array ('id' => 3, 'key' => 7, 'name' => 'Carrot', 'counter' => 2),
-		array ('id' => 4, 'key' => 42, 'name' => 'Bar', 'counter' => 42)
+		array ('id' => 1, 'name' => 'Apple', 'price' => 3, 'quantity' => 2),
+		array ('id' => 2, 'name' => 'Banana', 'price' => 3, 'quantity' => 2),
+		array ('id' => 3, 'name' => 'Carrot', 'price' => 3, 'quantity' => 2),
+		array ('id' => 4, 'name' => 'Bar', 'price' => 7, 'quantity' => 42)
 	)
 );
 
 // Upsert, max
 test_ingest
 (
-	$target->ingest
+	$stock->ingest
 	(
 		array
 		(
 			'id'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
-			'key'		=> array (RedMap\Schema::INGEST_VALUE, 3),
 			'name'		=> array (RedMap\Schema::INGEST_COLUMN, 'name'),
-			'counter'	=> array (RedMap\Schema::INGEST_VALUE, new RedMap\Max (20)),
+			'price'		=> array (RedMap\Schema::INGEST_VALUE, 3),
+			'quantity'	=> array (RedMap\Schema::INGEST_VALUE, new RedMap\Max (20)),
 		),
 		RedMap\Schema::INSERT_UPSERT,
-		$source
+		$food
 	),
-	$target->select (array (), array ('id' => true)),
+	$stock->select (array (), array ('id' => true)),
 	array
 	(
-		array ('id' => 1, 'key' => 3, 'name' => 'Apple', 'counter' => 20),
-		array ('id' => 2, 'key' => 3, 'name' => 'Banana', 'counter' => 20),
-		array ('id' => 3, 'key' => 3, 'name' => 'Carrot', 'counter' => 20),
-		array ('id' => 4, 'key' => 3, 'name' => 'Orange', 'counter' => 42)
+		array ('id' => 1, 'name' => 'Apple', 'price' => 3, 'quantity' => 20),
+		array ('id' => 2, 'name' => 'Banana', 'price' => 3, 'quantity' => 20),
+		array ('id' => 3, 'name' => 'Carrot', 'price' => 3, 'quantity' => 20),
+		array ('id' => 4, 'name' => 'Orange', 'price' => 3, 'quantity' => 42)
 	)
 );
 

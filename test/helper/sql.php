@@ -13,7 +13,7 @@ function sql_assert_compare ($pair, $expected)
 
 	for ($i = 0; $i < count ($returned); ++$i)
 	{
-		$expected_row = $expected[$i];
+		$expected_row = isset ($expected[$i]) ? $expected[$i] : array ();
 		$returned_row = $returned[$i];
 
 		assert (count ($expected_row) === count ($returned_row), 'Row #' . $i . ' has ' . count ($returned_row) . ' field(s) instead of ' . count ($expected_row));
