@@ -115,23 +115,39 @@ class Schema
 	{
 		$this->defaults = array ();
 
-		foreach ($fields as $name => &$field)
-		{
-			if ($field === null)
-				$field = array (0, self::MACRO_SCOPE . self::format_name ($name));
-			else if (is_string ($field))
-				$field = array (0, $field);
-			else if (!isset ($field[1]))
-				$field[1] = self::MACRO_SCOPE . self::format_name ($name);
-		}
-
 		foreach ($links as $name => &$link)
 		{
 			if (isset ($link[1]) && ($link[1] & self::LINK_IMPLICIT) !== 0)
 				$this->defaults[$name] = array ();
+		}		
+
+		$this->fields = array ();
+
+		foreach ($fields as $name => $field)
+		{
+			if ($field === null)
+			{
+				$expression = null;
+				$flags = 0;
+			}
+			else if (is_string ($field))
+			{
+				$expression = $fields;
+				$flags = 0;
+			}
+			else
+			{
+				$expression = isset ($field[1]) ? $field[1] : null;
+				$flags = isset ($field[0]) ? $field[0] : 0;
+			}
+
+			$this->fields[$name] = array
+			(
+				$flags,
+				$expression ?: self::MACRO_SCOPE . self::format_name ($name)
+			);
 		}
 
-		$this->fields = $fields;
 		$this->links = $links;
 		$this->separator = $separator;
 		$this->table = $table;
