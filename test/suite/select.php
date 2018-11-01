@@ -2,6 +2,7 @@
 
 require_once ('../src/schema.php');
 require_once ('../src/clients/mysqli.php');
+require_once ('../src/databases/sql.php');
 require_once ('helper/sql.php');
 
 $company = new RedMap\Schema
@@ -48,7 +49,7 @@ $report = new RedMap\Schema
 sql_connect ();
 sql_import ('setup/select_start.sql');
 
-$database = new RedMap\SQLDatabase ();
+$database = new RedMap\Databases\SQLDatabase ();
 
 // Select, 1 table, default 'equal' operator
 sql_assert_compare

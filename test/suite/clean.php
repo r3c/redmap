@@ -2,13 +2,14 @@
 
 require_once ('../src/schema.php');
 require_once ('../src/clients/mysqli.php');
+require_once ('../src/databases/sql.php');
 require_once ('helper/sql.php');
 
 // Start
 sql_connect ();
 sql_import ('setup/clean_start.sql');
 
-$database = new RedMap\SQLDatabase ();
+$database = new RedMap\Databases\SQLDatabase ();
 
 foreach (array ('score_memory', 'score_myisam') as $table)
 {

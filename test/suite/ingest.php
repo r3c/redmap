@@ -2,6 +2,7 @@
 
 require_once ('../src/schema.php');
 require_once ('../src/clients/mysqli.php');
+require_once ('../src/databases/sql.php');
 require_once ('helper/sql.php');
 
 function test_ingest ($ingest, $get, $expected)
@@ -52,7 +53,7 @@ $stock = new RedMap\Schema
 
 sql_connect ();
 
-$database = new RedMap\SQLDatabase ();
+$database = new RedMap\Databases\SQLDatabase ();
 
 // Insert
 test_ingest
