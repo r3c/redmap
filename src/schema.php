@@ -86,6 +86,17 @@ class Min extends Value
 	}
 }
 
+interface Client
+{
+	function connect ($user, $pass, $name, $host = '127.0.0.1', $port = 3306);
+	function error ();
+	function execute ($query, $params = array ());
+	function get_first ($query, $params = array (), $default = null);
+	function get_rows ($query, $params = array (), $default = null);
+	function get_value ($query, $params = array (), $default = null);
+	function insert ($query, $params = array ());
+}
+
 interface Database
 {
 	const CLEAN_OPTIMIZE = 0;

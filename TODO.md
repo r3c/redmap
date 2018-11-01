@@ -4,8 +4,7 @@ RedMap TODO list
 TODO
 ----
 
-- Switch [gs]et_primary methods to protected
-- Implement PDO driver
+- Implement PDO client
 - Replace FIELD_INTERNAL by naming convention e.g. ".name"
 - Fix SQL error when missing explicit link on nested ingested data [ingest-nested-implicit]
 

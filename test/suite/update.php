@@ -1,7 +1,7 @@
 <?php
 
-require_once ('../src/drivers/mysqli.php');
 require_once ('../src/schema.php');
+require_once ('../src/clients/mysqli.php');
 require_once ('helper/sql.php');
 
 function test_update ($update, $get, $expected)

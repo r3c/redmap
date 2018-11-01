@@ -2,11 +2,11 @@
 
 function sql_assert_compare ($pair, $expected)
 {
-	global $driver;
+	global $client;
 
 	list ($query, $params) = $pair;
 
-	$returned = $driver->get_rows ($query, $params);
+	$returned = $client->get_rows ($query, $params);
 
 	assert ($returned !== null, 'Get query failed');
 	assert (count ($expected) === count ($returned), 'Query returned ' . count ($returned) . ' row(s) instead of ' . count ($expected));
@@ -28,33 +28,33 @@ function sql_assert_compare ($pair, $expected)
 
 function sql_assert_execute ($pair)
 {
-	global $driver;
+	global $client;
 
 	list ($query, $params) = $pair;
 
-	return $driver->execute ($query, $params);
+	return $client->execute ($query, $params);
 }
 
 function sql_connect ()
 {
-	global $driver;
+	global $client;
 
-	$driver = new RedMap\Drivers\MySQLiDriver ('utf-8', function ($driver, $query)
+	$client = new RedMap\Clients\MySQLiClient ('utf-8', function ($client, $query)
 	{
-		assert (false, 'Query execution failed: ' . $driver->error ());
+		assert (false, 'Query execution failed: ' . $client->error ());
 	});
 
-	assert ($driver->connect ('root', '', 'redmap'), 'Connection to database');
+	assert ($client->connect ('root', '', 'redmap'), 'Connection to database');
 }
 
 function sql_import ($path)
 {
-	global $driver;
+	global $client;
 
-	assert ($driver->connection->multi_query (file_get_contents ($path)), 'Import SQL file "' . $path . '"');
+	assert ($client->connection->multi_query (file_get_contents ($path)), 'Import SQL file "' . $path . '"');
 
-	while ($driver->connection->more_results ())
-		$driver->connection->next_result ();
+	while ($client->connection->more_results ())
+		$client->connection->next_result ();
 }
 
 ?>

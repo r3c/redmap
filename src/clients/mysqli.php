@@ -1,8 +1,8 @@
 <?php
 
-namespace RedMap\Drivers;
+namespace RedMap\Clients;
 
-class MySQLiDriver
+class MySQLiClient implements \RedMap\Client
 {
 	private $server_host;
 	private $server_name;

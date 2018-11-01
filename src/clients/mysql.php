@@ -1,8 +1,8 @@
 <?php
 
-namespace RedMap\Drivers;
+namespace RedMap\Clients;
 
-class MySQLDriver
+class MySQLClient implements \RedMap\Client
 {
 	public function __construct ($charset, $handler = null)
 	{
