@@ -4,18 +4,32 @@ namespace RedMap\Clients;
 
 class MySQLClient implements \RedMap\Client
 {
-	public function __construct ($charset, $handler = null)
+	private $callback;
+	private $charset;
+	private $connection;
+	private $server_host;
+	private $server_name;
+	private $server_pass;
+	private $server_port;
+	private $server_user;
+
+	public function __construct ($name, $host, $port, $user, $pass, $callback)
 	{
-		$this->charset = $charset;
+		$this->callback = $callback;
+		$this->charset = null;
 		$this->connection = null;
-		$this->handler = $handler;
+		$this->server_host = $host;
+		$this->server_user = $user;
+		$this->server_pass = $pass;
+		$this->server_name = $name;
+		$this->server_port = $port;
 	}
 
-	public function connect ($user, $pass, $name, $host = '127.0.0.1', $port = 3306)
+	public function connect ()
 	{
-		$this->connection = mysql_connect ($host . ':' . $port, $user, $pass);
+		$this->connection = mysql_connect ($this->server_host . ':' . $this->server_port, $this->server_user, $this->server_pass);
 
-		if ($this->connection === false || !mysql_select_db ($name, $this->connection))
+		if ($this->connection === false || !mysql_select_db ($this->server_name, $this->connection))
 			return false;
 
 		if ($this->charset !== null)
@@ -83,6 +97,11 @@ class MySQLClient implements \RedMap\Client
 		return mysql_insert_id ($this->connection);
 	}
 
+	public function set_charset ($charset)
+	{
+		$this->charset = $charset;
+	}
+
 	private function escape ($value)
 	{
 		if ($value === null)
@@ -120,10 +139,10 @@ class MySQLClient implements \RedMap\Client
 
 		$result = mysql_query ($query, $this->connection);
 
-		if ($result === false && $this->handler !== null)
+		if ($result === false && $this->callback !== null)
 		{
-			$handler = $this->handler;
-			$handler ($this, $query);
+			$callback = $this->callback;
+			$callback ($this, $query);
 		}
 
 		return $result;

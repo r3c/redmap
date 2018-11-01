@@ -39,22 +39,29 @@ function sql_connect ()
 {
 	global $client;
 
-	$client = new RedMap\Clients\MySQLiClient ('utf-8', function ($client, $query)
+	list ($client) = RedMap\create_database ('mysqli://root@127.0.0.1/redmap?charset=utf-8', function ($client, $query)
 	{
 		assert (false, 'Query execution failed: ' . $client->error ());
 	});
 
-	assert ($client->connect ('root', '', 'redmap'), 'Connection to database');
+	assert ($client->connect (), 'Connection to database');
 }
 
 function sql_import ($path)
 {
 	global $client;
 
-	assert ($client->connection->multi_query (file_get_contents ($path)), 'Import SQL file "' . $path . '"');
+	$class = new ReflectionClass ('RedMap\\Clients\\MySQLiClient');
 
-	while ($client->connection->more_results ())
-		$client->connection->next_result ();
+	$property = $class->getProperty ('connection');
+	$property->setAccessible (true);
+
+	$connection = $property->getValue ($client);
+
+	assert ($connection->multi_query (file_get_contents ($path)), 'Import SQL file "' . $path . '"');
+
+	while ($connection->more_results ())
+		$connection->next_result ();
 }
 
 ?>

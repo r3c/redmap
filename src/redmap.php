@@ -88,7 +88,7 @@ class Min extends Value
 
 interface Client
 {
-	function connect ($user, $pass, $name, $host = '127.0.0.1', $port = 3306);
+	function connect ();
 	function error ();
 	function execute ($query, $params = array ());
 	function get_first ($query, $params = array (), $default = null);
@@ -158,6 +158,96 @@ class Schema
 		$this->separator = $separator;
 		$this->table = $table;
 	}
+}
+
+function _create_client ($scheme, $name, $host, $port, $user, $pass, $options, $callback)
+{
+	$base = dirname (__FILE__);
+
+	switch ($scheme)
+	{
+		case 'mysql':
+			require_once ($base . '/clients/mysql.php');
+
+			$client = new Clients\MySQLClient ($name, $host ?: '127.0.0.1', $port ?: 3306, $user ?: 'root', $pass ?: '', $callback);
+
+			if (isset ($options['charset']))
+				$client->set_charset ($options['charset']);
+
+			return $client;
+
+		case 'mysqli':
+			require_once ($base . '/clients/mysqli.php');
+
+			$client = new Clients\MySQLiClient ($name, $host ?: '127.0.0.1', $port ?: 3306, $user ?: 'root', $pass ?: '', $callback);
+
+			if (isset ($options['charset']))
+				$client->set_charset ($options['charset']);
+
+			if (isset ($options['reconnect']))
+				$client->set_reconnect (!!$options['reconnect']);
+
+			return $client;
+
+		default:
+			throw new \Exception ('scheme "' . $scheme . '" is not supported');
+	}
+}
+
+function _create_database ($scheme, $client)
+{
+	$base = dirname (__FILE__);
+
+	switch ($scheme)
+	{
+		case 'mysql':
+		case 'mysqli':
+			require_once ($base . '/databases/sql.php');
+
+			return new Databases\SQLDatabase ();
+
+		default:
+			throw new \Exception ('scheme "' . $scheme . '" is not supported');
+	}
+}
+
+function create_database ($url, $callback = null)
+{
+	$base = dirname (__FILE__);
+
+	// Parse query string into components
+	$components = parse_url ($url);
+
+	if ($components === false)
+		throw new \Exception ('could not parse connection string');
+
+	if (!isset ($components['host']))
+		throw new \Exception ('connection string must specify a host name');
+
+	if (!isset ($components['path']))
+		throw new \Exception ('connection string must specify a database name');
+
+	if (!isset ($components['scheme']))
+		throw new \Exception ('connection string must specify a scheme');
+
+	if (isset ($components['query']))
+		parse_str ($components['query'], $options);
+	else
+		$options = array ();
+
+	// Read components and convert into connection properties
+	$host = $components['host'];
+	$pass = isset ($components['pass']) ? $components['pass'] : null;
+	$name = (string)substr ($components['path'], 1);
+	$port = isset ($components['port']) ? $components['port'] : null;
+	$scheme = $components['scheme'];
+	$user = isset ($components['user']) ? $components['user'] : null;
+
+	// Create and setup client & database
+	$client = _create_client ($scheme, $name, $host, $port, $user, $pass, $options, $callback);
+	$database = _create_database ($scheme, $client);
+
+	return array ($client, $database);
 }
 
 ?>

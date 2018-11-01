@@ -4,31 +4,42 @@ namespace RedMap\Clients;
 
 class MySQLiClient implements \RedMap\Client
 {
+	private $callback;
+	private $charset;
+	private $connection;
+	private $reconnect;
 	private $server_host;
 	private $server_name;
 	private $server_pass;
 	private $server_port;
 	private $server_user;
 
-	public function __construct ($charset, $handler = null)
+	public function __construct ($name, $host, $port, $user, $pass, $callback)
 	{
 		\mysqli_report (MYSQLI_REPORT_OFF);
 
-		$this->charset = $charset;
+		$this->callback = $callback;
+		$this->charset = null;
 		$this->connection = null;
-		$this->handler = $handler;
 		$this->reconnect = false;
-	}
-
-	public function connect ($user, $pass, $name, $host = '127.0.0.1', $port = 3306)
-	{
 		$this->server_host = $host;
 		$this->server_user = $user;
 		$this->server_pass = $pass;
 		$this->server_name = $name;
 		$this->server_port = $port;
+	}
 
-		return $this->reset ();
+	public function connect ()
+	{
+		$this->connection = new \mysqli ($this->server_host, $this->server_user, $this->server_pass, $this->server_name, $this->server_port);
+
+		if ($this->connection->connect_errno !== 0)
+			return false;
+
+		if ($this->charset !== null)
+			$this->connection->set_charset ($this->charset);
+
+		return true;
 	}
 
 	public function error ()
@@ -105,6 +116,16 @@ class MySQLiClient implements \RedMap\Client
 		return $this->connection->insert_id;
 	}
 
+	public function set_charset ($charset)
+	{
+		$this->charset = $charset;
+	}
+
+	public function set_reconnect ($reconnect)
+	{
+		$this->reconnect = $reconnect;
+	}
+
 	private function escape ($value)
 	{
 		if ($value === null)
@@ -147,12 +168,12 @@ class MySQLiClient implements \RedMap\Client
 			if ($result !== false)
 				break;
 
-			if (!$reconnect || $this->connection->errno !== 2006 || !$this->reset ())
+			if (!$reconnect || $this->connection->errno !== 2006 || !$this->connect ())
 			{
-				if ($this->handler !== null)
+				if ($this->callback !== null)
 				{
-					$handler = $this->handler;
-					$handler ($this, $query);
+					$callback = $this->callback;
+					$callback ($this, $query);
 				}
 
 				break;
@@ -160,19 +181,6 @@ class MySQLiClient implements \RedMap\Client
 		}
 
 		return $result;
-	}
-
-	private function reset ()
-	{
-		$this->connection = new \mysqli ($this->server_host, $this->server_user, $this->server_pass, $this->server_name, $this->server_port);
-
-		if ($this->connection->connect_errno !== 0)
-			return false;
-
-		if ($this->charset !== null)
-			$this->connection->set_charset ($this->charset);
-
-		return true;
 	}
 }
 
