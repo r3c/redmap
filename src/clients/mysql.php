@@ -51,17 +51,15 @@ class MySQLClient implements \RedMap\Client
 		return mysql_affected_rows ($this->connection);
 	}
 
-	public function get_first ($query, $params = array (), $default = null)
+	public function insert ($query, $params = array ())
 	{
-		$handle = $this->send ($query, $params);
+		if ($this->send ($query, $params) === false)
+			return null;
 
-		if ($handle === false || !($row = mysql_fetch_assoc ($handle)))
-			return $default;
-
-		return $row;
+		return mysql_insert_id ($this->connection);
 	}
 
-	public function get_rows ($query, $params = array (), $default = null)
+	public function select ($query, $params = array (), $default = null)
 	{
 		$handle = $this->send ($query, $params);
 
@@ -70,31 +68,10 @@ class MySQLClient implements \RedMap\Client
 
 		$rows = array ();
 
-		while (($row = mysql_fetch_assoc ($handle)))
+		while (($row = mysql_fetch_assoc ($handle)) !== false)
 			$rows[] = $row;
 
 		return $rows;
-	}
-
-	public function get_value ($query, $params = array (), $default = null)
-	{
-		$handle = $this->send ($query, $params);
-
-		if ($handle === false)
-			return $default;
-
-		if (($row = mysql_fetch_row ($handle)) && count ($row) >= 1)
-			return $row[0];
-
-		return $default;
-	}
-
-	public function insert ($query, $params = array ())
-	{
-		if ($this->send ($query, $params) === false)
-			return null;
-
-		return mysql_insert_id ($this->connection);
 	}
 
 	public function set_charset ($charset)

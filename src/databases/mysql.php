@@ -206,7 +206,7 @@ class MySQLDatabase implements \RedMap\Database
 	{
 		list ($select, $select_params) = $this->build_select ($schema, $filters, $orders, $count, $offset);
 
-		return $this->client->get_rows ($select, $select_params);
+		return $this->client->select ($select, $select_params);
 	}
 
 	public function update ($schema, $assignments, $filters)

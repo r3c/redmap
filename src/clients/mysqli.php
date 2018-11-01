@@ -60,20 +60,17 @@ class MySQLiClient implements \RedMap\Client
 		return $this->connection->affected_rows >= 0 ? $this->connection->affected_rows : null;
 	}
 
-	public function get_first ($query, $params = array (), $default = null)
+	public function insert ($query, $params = array ())
 	{
 		$result = $this->query ($query, $params);
 
 		if ($result === false)
-			return $default;
+			return null;
 
-		$row = $result->fetch_assoc ();
-		$result->free ();
-
-		return $row !== null ? $row : $default;
+		return $this->connection->insert_id;
 	}
 
-	public function get_rows ($query, $params = array (), $default = null)
+	public function select ($query, $params = array (), $default = null)
 	{
 		$result = $this->query ($query, $params);
 
@@ -88,32 +85,6 @@ class MySQLiClient implements \RedMap\Client
 		$result->free ();
 
 		return $rows;
-	}
-
-	public function get_value ($query, $params = array (), $default = null)
-	{
-		$result = $this->query ($query, $params);
-
-		if ($result === false)
-			return $default;
-
-		$row = $result->fetch_row ();
-		$result->free ();
-
-		if ($row !== null && count ($row) >= 1)
-			return $row[0];
-
-		return $default;
-	}
-
-	public function insert ($query, $params = array ())
-	{
-		$result = $this->query ($query, $params);
-
-		if ($result === false)
-			return null;
-
-		return $this->connection->insert_id;
 	}
 
 	public function set_charset ($charset)

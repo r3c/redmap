@@ -91,10 +91,8 @@ interface Client
 	function connect ();
 	function error ();
 	function execute ($query, $params = array ());
-	function get_first ($query, $params = array (), $default = null);
-	function get_rows ($query, $params = array (), $default = null);
-	function get_value ($query, $params = array (), $default = null);
 	function insert ($query, $params = array ());
+	function select ($query, $params = array (), $default = null);
 }
 
 interface Database
