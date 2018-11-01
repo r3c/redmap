@@ -40,7 +40,7 @@ $log = new RedMap\Schema
 
 sql_connect ();
 
-$database = new RedMap\Database ();
+$database = new RedMap\SQLDatabase ();
 
 // Update, 1 table, constant
 test_update

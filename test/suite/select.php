@@ -48,7 +48,7 @@ $report = new RedMap\Schema
 sql_connect ();
 sql_import ('setup/select_start.sql');
 
-$database = new RedMap\Database ();
+$database = new RedMap\SQLDatabase ();
 
 // Select, 1 table, default 'equal' operator
 sql_assert_compare

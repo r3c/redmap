@@ -52,7 +52,7 @@ $stock = new RedMap\Schema
 
 sql_connect ();
 
-$database = new RedMap\Database ();
+$database = new RedMap\SQLDatabase ();
 
 // Insert
 test_ingest
@@ -67,7 +67,7 @@ test_ingest
 			'price'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
 			'quantity'	=> array (RedMap\Database::INGEST_VALUE, 0)
 		),
-		RedMap\Database::INSERT_DEFAULT,
+		RedMap\Database::INSERT_APPEND,
 		$food,
 		array ('id|le' => 2)
 	),
@@ -94,7 +94,7 @@ test_ingest
 			'price'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
 			'quantity'	=> array (RedMap\Database::INGEST_VALUE, 0)
 		),
-		RedMap\Database::INSERT_DEFAULT,
+		RedMap\Database::INSERT_APPEND,
 		$food,
 		array ('id' => 1, '+' => array ('category' => null)) // FIXME [ingest-nested-implicit]: no error is raised when "category" is not linked here (and missing from selected columns)
 	),

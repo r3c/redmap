@@ -27,7 +27,7 @@ $message = new RedMap\Schema
 
 sql_connect ();
 
-$database = new RedMap\Database ();
+$database = new RedMap\SQLDatabase ();
 
 // Insert, default, constants
 test_insert

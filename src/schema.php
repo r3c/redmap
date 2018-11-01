@@ -86,23 +86,30 @@ class Min extends Value
 	}
 }
 
-class Database
+interface Database
 {
 	const CLEAN_OPTIMIZE = 0;
 	const CLEAN_TRUNCATE = 1;
-	const FILTER_GROUP = '~';
-	const FILTER_LINK = '+';
 	const INGEST_COLUMN = 0;
 	const INGEST_VALUE = 1;
-	const INSERT_DEFAULT = 0;
+	const INSERT_APPEND = 0;
 	const INSERT_REPLACE = 1;
 	const INSERT_UPSERT = 2;
+
+	function clean ($schema, $mode);
+	function delete ($schema, $filters = array ());
+	function ingest ($schema, $assignments, $mode, $source, $filters = array (), $orders = array (), $count = null, $offset = null);
+	function insert ($schema, $assignments, $mode = self::INSERT_APPEND);
+	function select ($schema, $filters = array (), $orders = array (), $count = null, $offset = null);
+	function update ($schema, $assignments, $filters);
+}
+
+class SQLDatabase implements Database
+{
+	const FILTER_GROUP = '~';
+	const FILTER_LINK = '+';
 	const MACRO_PARAM = '?';
 	const MACRO_SCOPE = '@';
-	const SET_INSERT = 0;
-	const SET_REPLACE = 1;
-	const SET_UPDATE = 2;
-	const SET_UPSERT = 3;
 	const SQL_BEGIN = '`';
 	const SQL_END = '`';
 	const SQL_NEXT = ',';
@@ -247,7 +254,7 @@ class Database
 		);
 	}
 
-	public function insert ($schema, $assignments, $mode = self::INSERT_DEFAULT)
+	public function insert ($schema, $assignments, $mode = self::INSERT_APPEND)
 	{
 		if (count ($assignments) === 0)
 			return self::SQL_NOOP;

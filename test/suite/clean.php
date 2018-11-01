@@ -8,7 +8,7 @@ require_once ('helper/sql.php');
 sql_connect ();
 sql_import ('setup/clean_start.sql');
 
-$database = new RedMap\Database ();
+$database = new RedMap\SQLDatabase ();
 
 foreach (array ('score_memory', 'score_myisam') as $table)
 {
