@@ -1,13 +1,7 @@
 <?php
 
-function sql_assert_compare ($pair, $expected)
+function sql_compare ($returned, $expected)
 {
-	global $client;
-
-	list ($query, $params) = $pair;
-
-	$returned = $client->get_rows ($query, $params);
-
 	assert ($returned !== null, 'Get query failed');
 	assert (count ($expected) === count ($returned), 'Query returned ' . count ($returned) . ' row(s) instead of ' . count ($expected));
 
@@ -26,39 +20,30 @@ function sql_assert_compare ($pair, $expected)
 	}
 }
 
-function sql_assert_execute ($pair)
-{
-	global $client;
-
-	list ($query, $params) = $pair;
-
-	return $client->execute ($query, $params);
-}
-
 function sql_connect ()
 {
-	global $client;
+	global $database;
 
-	list ($client, $database) = RedMap\create_database ('mysqli://root@127.0.0.1/redmap?charset=utf-8', function ($client, $query)
+	$database = RedMap\create_database ('mysqli://root@127.0.0.1/redmap?charset=utf-8', function ($client, $query)
 	{
 		assert (false, 'Query execution failed: ' . $client->error ());
 	});
 
-	assert ($client->connect (), 'Connection to database');
+	assert ($database->connect (), 'Connection to database');
 
 	return $database;
 }
 
 function sql_import ($path)
 {
-	global $client;
+	global $database;
 
 	$class = new ReflectionClass ('RedMap\\Clients\\MySQLiClient');
 
 	$property = $class->getProperty ('connection');
 	$property->setAccessible (true);
 
-	$connection = $property->getValue ($client);
+	$connection = $property->getValue ($database->client);
 
 	assert ($connection->multi_query (file_get_contents ($path)), 'Import SQL file "' . $path . '"');
 

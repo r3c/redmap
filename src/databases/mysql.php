@@ -11,7 +11,13 @@ class MySQLDatabase implements \RedMap\Database
 	const SQL_BEGIN = '`';
 	const SQL_END = '`';
 	const SQL_NEXT = ',';
-	const SQL_NOOP = 'SELECT 0';
+
+	public $client;
+
+	public function __construct ($client)
+	{
+		$this->client = $client;
+	}
 
 	public function clean ($schema, $mode)
 	{
@@ -20,48 +26,46 @@ class MySQLDatabase implements \RedMap\Database
 			case self::CLEAN_OPTIMIZE:
 				$procedure = 'redmap_' . uniqid ();
 
-				return array
+				if (!$this->client->execute
 				(
-					array
-					(
-						'CREATE PROCEDURE ' . self::format_name ($procedure) . '() ' .
-						'BEGIN ' .
-							'CASE (SELECT ENGINE FROM information_schema.TABLES where TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?) ' .
-								'WHEN \'MEMORY\' THEN ' .
-									'ALTER TABLE ' . self::format_name ($schema->table) . ' ENGINE=MEMORY; ' .
-								'ELSE ' .
-									'OPTIMIZE TABLE ' . self::format_name ($schema->table) . '; ' .
-							'END CASE; ' .
-						'END',
-						array ($schema->table)
-					),
-					array
-					(
-						'CALL ' . self::format_name ($procedure) . '()',
-						array ()
-					),
-					array
-					(
-						'DROP PROCEDURE IF EXISTS ' . self::format_name ($procedure) . '',
-						array ()
-					)
-				);
+					'CREATE PROCEDURE ' . self::format_name ($procedure) . '() ' .
+					'BEGIN ' .
+						'CASE (SELECT ENGINE FROM information_schema.TABLES where TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?) ' .
+							'WHEN \'MEMORY\' THEN ' .
+								'ALTER TABLE ' . self::format_name ($schema->table) . ' ENGINE=MEMORY; ' .
+							'ELSE ' .
+								'OPTIMIZE TABLE ' . self::format_name ($schema->table) . '; ' .
+						'END CASE; ' .
+					'END',
+					array ($schema->table)
+				))
+					return false;
+
+				$success = $this->client->execute ('CALL ' . self::format_name ($procedure) . '()');
+				$success = $this->client->execute ('DROP PROCEDURE IF EXISTS ' . self::format_name ($procedure)) && $success;
+
+				return $success;
 
 			case self::CLEAN_TRUNCATE:
-				return array (array ('TRUNCATE TABLE ' . self::format_name ($schema->table), array ()));
+				return $this->client->execute ('TRUNCATE TABLE ' . self::format_name ($schema->table));
 
 			default:
 				throw new \Exception ("invalid mode '$mode'");
 		}
 	}
 
+	public function connect ()
+	{
+		return $this->client->connect ();
+	}
+
 	public function delete ($schema, $filters = array ())
 	{
 		$alias = self::format_name ('_0');
 
-		list ($condition, $params) = $this->build_condition ($schema, $filters, $alias);
+		list ($condition, $params) = $this->build_conditions ($schema, $filters, $alias);
 
-		return array
+		return $this->client->execute
 		(
 			'DELETE FROM ' . $alias .
 			(' USING ' . self::format_name ($schema->table) . ' ' . $alias) .
@@ -73,7 +77,7 @@ class MySQLDatabase implements \RedMap\Database
 	public function ingest ($schema, $assignments, $mode, $source, $filters = array (), $orders = array (), $count = null, $offset = null)
 	{
 		if (count ($assignments) === 0)
-			return self::SQL_NOOP;
+			return true;
 
 		$alias = self::format_alias (0);
 
@@ -132,8 +136,9 @@ class MySQLDatabase implements \RedMap\Database
 			}
 		}
 
-		list ($select, $select_params) = $this->select ($source, $filters, $orders, $count, $offset);
+		list ($select, $select_params) = $this->build_select ($source, $filters, $orders, $count, $offset);
 
+		// Build and execute statement
 		$duplicate = count ($update_params) > 0
 			? ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT))
 			: '';
@@ -142,7 +147,7 @@ class MySQLDatabase implements \RedMap\Database
 			? 'REPLACE'
 			: 'INSERT';
 
-		return array
+		return $this->client->execute
 		(
 			$verb . ' INTO ' . self::format_name ($schema->table) .
 			' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
@@ -155,7 +160,7 @@ class MySQLDatabase implements \RedMap\Database
 	public function insert ($schema, $assignments, $mode = self::INSERT_APPEND)
 	{
 		if (count ($assignments) === 0)
-			return self::SQL_NOOP;
+			return null;
 
 		$insert = '';
 		$insert_params = array ();
@@ -178,6 +183,7 @@ class MySQLDatabase implements \RedMap\Database
 			}
 		}
 
+		// Build and execute statement
 		$duplicate = count ($update_params) > 0
 			? ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT))
 			: '';
@@ -186,7 +192,7 @@ class MySQLDatabase implements \RedMap\Database
 			? 'REPLACE'
 			: 'INSERT';
 
-		return array
+		return $this->client->insert
 		(
 			$verb . ' INTO ' . self::format_name ($schema->table) .
 			' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
@@ -198,44 +204,15 @@ class MySQLDatabase implements \RedMap\Database
 
 	public function select ($schema, $filters = array (), $orders = array (), $count = null, $offset = null)
 	{
-		// Build columns list from links to other schemas for "select" clause
-		$aliases = array ();
-		$unique = 1;
+		list ($select, $select_params) = $this->build_select ($schema, $filters, $orders, $count, $offset);
 
-		$alias = self::format_alias ($unique++);
-
-		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($schema, $filters, $alias, ' WHERE ', '', '', $aliases, $unique);
-
-		$params = array_merge ($relation_params, $condition_params);
-
-		// Build filtering, ordering and pagination for "order by" and "limit" clauses
-		$pagination = '';
-		$sort = $this->build_sort ($schema, $orders, $aliases, $alias);
-
-		if ($sort !== '')
-			$pagination .= ' ORDER BY ' . $sort;
-
-		if ($count !== null)
-		{
-			$pagination .= ' LIMIT ' . self::MACRO_PARAM . self::SQL_NEXT . self::MACRO_PARAM;
-			$params[] = $offset !== null ? (int)$offset : 0;
-			$params[] = (int)$count;
-		}
-
-		// Build statement
-		return array
-		(
-			'SELECT ' . $this->build_select ($schema, $alias, '') . $select .
-			' FROM ' . self::format_name ($schema->table) . ' ' . $alias .
-			$relation . $condition . $pagination,
-			$params
-		);
+		return $this->client->get_rows ($select, $select_params);
 	}
 
 	public function update ($schema, $assignments, $filters)
 	{
 		if (count ($assignments) === 0)
-			return self::SQL_NOOP;
+			return true;
 
 		// Build update statement for requested fields from current table
 		$update = '';
@@ -256,10 +233,10 @@ class MySQLDatabase implements \RedMap\Database
 
 		$current = self::format_alias ($unique++);
 
-		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($schema, $filters, $current, ' WHERE ', '', '', $aliases, $unique);
+		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filters ($schema, $filters, $current, ' WHERE ', '', '', $aliases, $unique);
 
-		// Build query with parameters
-		return array
+		// Build and execute statement
+		return $this->client->execute
 		(
 			'UPDATE ' . self::format_name ($schema->table) . ' ' . $current .
 			$relation .
@@ -269,7 +246,22 @@ class MySQLDatabase implements \RedMap\Database
 		);
 	}
 
-	private function build_condition ($schema, $filters, $source)
+	private function build_columns ($schema, $source, $namespace)
+	{
+		$query = '';
+
+		foreach ($schema->fields as $name => $field)
+		{
+			if (($field[0] & \RedMap\Schema::FIELD_INTERNAL) !== 0)
+				continue;
+
+			$query .= self::SQL_NEXT . $this->get_expression ($schema, $name, $source) . ' ' . self::format_name ($namespace . $name);
+		}
+
+		return (string)substr ($query, strlen (self::SQL_NEXT));
+	}
+
+	private function build_conditions ($schema, $filters, $source)
 	{
 		static $comparers;
 		static $logicals;
@@ -320,7 +312,7 @@ class MySQLDatabase implements \RedMap\Database
 			// Complex sub-condition group
 			if (is_array ($value) && is_numeric ($name))
 			{
-				list ($group_condition, $group_params) = $this->build_condition ($schema, $value, $source);
+				list ($group_condition, $group_params) = $this->build_conditions ($schema, $value, $source);
 
 				if ($group_condition !== '')
 				{
@@ -357,11 +349,11 @@ class MySQLDatabase implements \RedMap\Database
 		return array ($condition, $params);
 	}
 
-	private function build_filter ($schema, $filters, $alias, $begin, $end, $prefix, &$aliases, &$unique)
+	private function build_filters ($schema, $filters, $alias, $begin, $end, $prefix, &$aliases, &$unique)
 	{
 		if ($filters !== null)
 		{
-			list ($condition, $condition_params) = $this->build_condition ($schema, $filters, $alias);
+			list ($condition, $condition_params) = $this->build_conditions ($schema, $filters, $alias);
 
 			if ($condition !== '')
 			{
@@ -396,7 +388,7 @@ class MySQLDatabase implements \RedMap\Database
 				$type = 'LEFT';
 
 			$relation .= ' ' . $type . ' JOIN (' . self::format_name ($link_schema->table) . ' ' . $link_alias;
-			$select .= self::SQL_NEXT . $this->build_select ($link_schema, $link_alias, $namespace);
+			$select .= self::SQL_NEXT . $this->build_columns ($link_schema, $link_alias, $namespace);
 
 			// Resolve relation connections
 			$connect_relation = ') ON ';
@@ -430,7 +422,7 @@ class MySQLDatabase implements \RedMap\Database
 			// Recursively merge nested fields and tables
 			$link_aliases = array ();
 
-			list ($inner_select, $inner_relation, $inner_relation_params, $inner_condition, $inner_condition_params) = $this->build_filter ($link_schema, $children, $link_alias, $begin, $end, $namespace, $link_aliases, $unique);
+			list ($inner_select, $inner_relation, $inner_relation_params, $inner_condition, $inner_condition_params) = $this->build_filters ($link_schema, $children, $link_alias, $begin, $end, $namespace, $link_aliases, $unique);
 
 			if ($inner_condition !== '')
 			{
@@ -450,22 +442,7 @@ class MySQLDatabase implements \RedMap\Database
 		return array ($select, $relation, $relation_params, $condition, $condition_params);
 	}
 
-	private function build_select ($schema, $source, $namespace)
-	{
-		$query = '';
-
-		foreach ($schema->fields as $name => $field)
-		{
-			if (($field[0] & \RedMap\Schema::FIELD_INTERNAL) !== 0)
-				continue;
-
-			$query .= self::SQL_NEXT . $this->get_expression ($schema, $name, $source) . ' ' . self::format_name ($namespace . $name);
-		}
-
-		return (string)substr ($query, strlen (self::SQL_NEXT));
-	}
-
-	private function build_sort ($schema, $orders, $aliases, $source)
+	private function build_orders ($schema, $orders, $aliases, $source)
 	{
 		$query = '';
 
@@ -481,7 +458,7 @@ class MySQLDatabase implements \RedMap\Database
 
 				list ($link_alias, $link_aliases) = $aliases[$name];
 
-				$query .= self::SQL_NEXT . $this->build_sort ($link_schema, $link_orders, $link_aliases, $link_alias);
+				$query .= self::SQL_NEXT . $this->build_orders ($link_schema, $link_orders, $link_aliases, $link_alias);
 			}
 		}
 
@@ -495,6 +472,46 @@ class MySQLDatabase implements \RedMap\Database
 		}
 
 		return (string)substr ($query, strlen (self::SQL_NEXT));
+	}
+
+	private function build_select ($schema, $filters, $orders, $count, $offset)
+	{
+		// Build columns list and filtering conditions from links to other schemas for "select" and "where" clauses
+		$aliases = array ();
+		$unique = 1;
+
+		$alias = self::format_alias ($unique++);
+
+		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filters ($schema, $filters, $alias, ' WHERE ', '', '', $aliases, $unique);
+
+		// Build ordering for "order by" clause
+		$orders = $this->build_orders ($schema, $orders, $aliases, $alias);
+
+		if ($orders !== '')
+			$ordering = ' ORDER BY ' . $orders;
+		else
+			$ordering = '';
+
+		// Build pagination for "limit" clause
+		if ($count !== null)
+		{
+			$pagination = ' LIMIT ' . self::MACRO_PARAM . self::SQL_NEXT . self::MACRO_PARAM;
+			$pagination_params = array ($offset !== null ? (int)$offset : 0, (int)$count);
+		}
+		else
+		{
+			$pagination = '';
+			$pagination_params = array ();
+		}
+
+		// Build and return statement
+		return array
+		(
+			'SELECT ' . $this->build_columns ($schema, $alias, '') . $select .
+			' FROM ' . self::format_name ($schema->table) . ' ' . $alias .
+			$relation . $condition . $ordering . $pagination,
+			array_merge ($relation_params, $condition_params, $pagination_params)
+		);
 	}
 
 	/*

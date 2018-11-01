@@ -21,16 +21,14 @@ foreach (array ('score_memory', 'score_myisam') as $table)
 	);
 
 	// Optimize
-	foreach ($database->clean ($score, RedMap\Database::CLEAN_OPTIMIZE) as $pair)
-		sql_assert_execute ($pair);
+	assert ($database->clean ($score, RedMap\Database::CLEAN_OPTIMIZE) !== null);
 
-	sql_assert_compare ($database->select ($score), array (array ('player' => 'me', 'value' => 42)));
+	sql_compare ($database->select ($score), array (array ('player' => 'me', 'value' => 42)));
 
 	// Truncate
-	foreach ($database->clean ($score, RedMap\Database::CLEAN_TRUNCATE) as $pair)
-		sql_assert_execute ($pair);
+	assert ($database->clean ($score, RedMap\Database::CLEAN_TRUNCATE) !== null);
 
-	sql_assert_compare ($database->select ($score), array ());
+	sql_compare ($database->select ($score), array ());
 }
 
 // Stop

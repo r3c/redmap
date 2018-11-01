@@ -108,6 +108,7 @@ interface Database
 	const INSERT_UPSERT = 2;
 
 	function clean ($schema, $mode);
+	function connect ();
 	function delete ($schema, $filters = array ());
 	function ingest ($schema, $assignments, $mode, $source, $filters = array (), $orders = array (), $count = null, $offset = null);
 	function insert ($schema, $assignments, $mode = self::INSERT_APPEND);
@@ -204,7 +205,7 @@ function _create_database ($scheme, $client)
 		case 'mysqli':
 			require_once ($base . '/databases/mysql.php');
 
-			return new Databases\MySQLDatabase ();
+			return new Databases\MySQLDatabase ($client);
 
 		default:
 			throw new \Exception ('scheme "' . $scheme . '" is not supported');
@@ -247,7 +248,7 @@ function create_database ($url, $callback = null)
 	$client = _create_client ($scheme, $name, $host, $port, $user, $pass, $options, $callback);
 	$database = _create_database ($scheme, $client);
 
-	return array ($client, $database);
+	return $database;
 }
 
 ?>

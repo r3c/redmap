@@ -49,7 +49,7 @@ $database = sql_connect ();
 sql_import ('setup/select_start.sql');
 
 // Select, 1 table, default 'equal' operator
-sql_assert_compare
+sql_compare
 (
 	$database->select ($company, array ('id' => 1), array ('id' => true)),
 	array
@@ -59,7 +59,7 @@ sql_assert_compare
 );
 
 // Select, 1 table, default 'is' operator
-sql_assert_compare
+sql_compare
 (
 	$database->select ($company, array ('ipo' => null), array ('id' => true)),
 	array
@@ -69,7 +69,7 @@ sql_assert_compare
 );
 
 // Select, 1 table, greater or equal operator
-sql_assert_compare
+sql_compare
 (
 	$database->select ($company, array ('ipo|ge' => 2000), array ('name' => true)),
 	array
@@ -80,7 +80,7 @@ sql_assert_compare
 );
 
 // Select, 1 table, greater than operator
-sql_assert_compare
+sql_compare
 (
 	$database->select ($company, array ('id|gt' => 3), array ('id' => true)),
 	array
@@ -90,7 +90,7 @@ sql_assert_compare
 );
 
 // Select, 1 table, lower or equal operator
-sql_assert_compare
+sql_compare
 (
 	$database->select ($company, array ('id|le' => 2), array ('id' => true)),
 	array
@@ -101,7 +101,7 @@ sql_assert_compare
 );
 
 // Select, 1 table, lower than operator
-sql_assert_compare
+sql_compare
 (
 	$database->select ($company, array ('ipo|lt' => 2004), array ('id' => true)),
 	array
@@ -111,7 +111,7 @@ sql_assert_compare
 );
 
 // Select, 1 table, like operator
-sql_assert_compare
+sql_compare
 (
 	$database->select ($company, array ('name|like' => 'A%'), array ('id' => true)),
 	array
@@ -122,7 +122,7 @@ sql_assert_compare
 );
 
 // Select, 1 table, match boolean operator
-sql_assert_compare
+sql_compare
 (
 	$database->select ($report, array ('summary|mb' => 'com*'), array ('day' => false)),
 	array
@@ -133,7 +133,7 @@ sql_assert_compare
 );
 
 // Link with company
-sql_assert_compare
+sql_compare
 (
 	$database->select ($employee, array ('+' => array ('company' => null)), array ('id' => true)),
 	array
@@ -148,7 +148,7 @@ sql_assert_compare
 );
 
 // Filter by id, link with company and manager
-sql_assert_compare
+sql_compare
 (
 	$database->select ($employee, array ('id' => 1, '+'  => array ('company' => null, 'manager' => null)), array ('id' => true)),
 	array
@@ -158,7 +158,7 @@ sql_assert_compare
 );
 
 // Filter by id, link with manager
-sql_assert_compare
+sql_compare
 (
 	$database->select ($employee, array ('id' => 2, '+' => array ('manager' => null)), array ('id' => true)),
 	array
@@ -168,7 +168,7 @@ sql_assert_compare
 );
 
 // Link with manager, filter by missing manager
-sql_assert_compare
+sql_compare
 (
 	$database->select ($employee, array ('+' => array ('manager' => array ('id' => null))), array ('id' => true)),
 	array
@@ -181,7 +181,7 @@ sql_assert_compare
 );
 
 // Link with company, filter by company name
-sql_assert_compare
+sql_compare
 (
 	$database->select ($employee, array ('+' => array ('company' => array ('name|like' => 'A%'))), array ('id' => true)),
 	array
@@ -192,7 +192,7 @@ sql_assert_compare
 );
 
 // Filter by id, link with manager and company of manager
-sql_assert_compare
+sql_compare
 (
 	$database->select ($employee, array ('id|in' => array (1, 2), '+' => array ('manager' => array ('+' => array ('company' => null)))), array ('id' => true)),
 	array
@@ -203,7 +203,7 @@ sql_assert_compare
 );
 
 // Filter by id, link with external report on day 2
-sql_assert_compare
+sql_compare
 (
 	$database->select ($employee, array ('id' => 1, '+' => array ('report' => array ('!day' => 2))), array ('id' => true)),
 	array
@@ -213,7 +213,7 @@ sql_assert_compare
 );
 
 // Link with both company and manager, filter only on linked fields
-sql_assert_compare
+sql_compare
 (
 	$database->select ($employee, array ('+' => array ('company' => array ('id' => 1), 'manager' => array ('id' => 1))), array ('id' => true)),
 	array
@@ -223,7 +223,7 @@ sql_assert_compare
 );
 
 // Link with company and filter by company name and employee name
-sql_assert_compare
+sql_compare
 (
 	$database->select ($employee, array ('+' => array ('company' => null)), array ('+' => array ('company' => array ('name' => true)), 'id' => false)),
 	array
