@@ -20,11 +20,11 @@ function sql_compare ($returned, $expected)
 	}
 }
 
-function sql_connect ()
+function sql_connect ($callback = null)
 {
-	$database = RedMap\create_database ('mysqli://root@127.0.0.1/redmap?charset=utf-8', function ($client, $query)
+	$database = RedMap\create_database ('mysqli://root@127.0.0.1/redmap?charset=utf-8', $callback ?: function ($error, $query)
 	{
-		assert (false, 'Query execution failed: ' . $client->error ());
+		assert (false, 'Query execution failed: ' . $error);
 	});
 
 	assert ($database->connect (), 'Connection to database');

@@ -89,10 +89,9 @@ class Min extends Value
 interface Client
 {
 	function connect ();
-	function error ();
 	function execute ($query, $params = array ());
 	function insert ($query, $params = array ());
-	function select ($query, $params = array (), $default = null);
+	function select ($query, $params = array (), $fallback = null);
 }
 
 interface Database

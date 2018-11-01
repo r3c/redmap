@@ -38,11 +38,6 @@ class MySQLClient implements \RedMap\Client
 		return true;
 	}
 
-	public function error ()
-	{
-		return mysql_error ($this->connection);
-	}
-
 	public function execute ($query, $params = array ())
 	{
 		if ($this->send ($query, $params) === false)
@@ -59,12 +54,12 @@ class MySQLClient implements \RedMap\Client
 		return mysql_insert_id ($this->connection);
 	}
 
-	public function select ($query, $params = array (), $default = null)
+	public function select ($query, $params = array (), $fallback = null)
 	{
 		$handle = $this->send ($query, $params);
 
 		if ($handle === false)
-			return $default;
+			return $fallback;
 
 		$rows = array ();
 
@@ -119,7 +114,7 @@ class MySQLClient implements \RedMap\Client
 		if ($result === false && $this->callback !== null)
 		{
 			$callback = $this->callback;
-			$callback ($this, $query);
+			$callback (mysql_error ($this->connection), $query);
 		}
 
 		return $result;

@@ -6,6 +6,8 @@ Clean: <?php require ('suite/clean.php'); ?>
 
 Connect: <?php require ('suite/connect.php'); ?>
 
+Error: <?php require ('suite/error.php'); ?>
+
 Ingest: <?php require ('suite/ingest.php'); ?>
 
 Insert: <?php require ('suite/insert.php'); ?>

@@ -42,11 +42,6 @@ class MySQLiClient implements \RedMap\Client
 		return true;
 	}
 
-	public function error ()
-	{
-		return $this->connection->error;
-	}
-
 	public function execute ($query, $params = array ())
 	{
 		$result = $this->query ($query, $params);
@@ -70,12 +65,12 @@ class MySQLiClient implements \RedMap\Client
 		return $this->connection->insert_id;
 	}
 
-	public function select ($query, $params = array (), $default = null)
+	public function select ($query, $params = array (), $fallback = null)
 	{
 		$result = $this->query ($query, $params);
 
 		if ($result === false)
-			return $default;
+			return $fallback;
 
 		$rows = array ();
 
@@ -144,7 +139,7 @@ class MySQLiClient implements \RedMap\Client
 				if ($this->callback !== null)
 				{
 					$callback = $this->callback;
-					$callback ($this, $query);
+					$callback ($this->connection->error, $query);
 				}
 
 				break;
