@@ -52,23 +52,26 @@ $stock = new RedMap\Schema
 
 sql_connect ();
 
+$database = new RedMap\Database ();
+
 // Insert
 test_ingest
 (
-	$stock->ingest
+	$database->ingest
 	(
+		$stock,
 		array
 		(
-			'id'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
-			'name'		=> array (RedMap\Schema::INGEST_COLUMN, 'name'),
-			'price'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
-			'quantity'	=> array (RedMap\Schema::INGEST_VALUE, 0)
+			'id'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
+			'name'		=> array (RedMap\Database::INGEST_COLUMN, 'name'),
+			'price'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
+			'quantity'	=> array (RedMap\Database::INGEST_VALUE, 0)
 		),
-		RedMap\Schema::INSERT_DEFAULT,
+		RedMap\Database::INSERT_DEFAULT,
 		$food,
 		array ('id|le' => 2)
 	),
-	$stock->select (array (), array ('id' => true)),
+	$database->select ($stock, array (), array ('id' => true)),
 	array
 	(
 		array ('id' => 1, 'name' => 'Apple', 'price' => 1, 'quantity' => 0),
@@ -81,20 +84,21 @@ test_ingest
 // Insert, child reference
 test_ingest
 (
-	$stock->ingest
+	$database->ingest
 	(
+		$stock,
 		array
 		(
-			'id'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
-			'name'		=> array (RedMap\Schema::INGEST_COLUMN, 'category__name'),
-			'price'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
-			'quantity'	=> array (RedMap\Schema::INGEST_VALUE, 0)
+			'id'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
+			'name'		=> array (RedMap\Database::INGEST_COLUMN, 'category__name'),
+			'price'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
+			'quantity'	=> array (RedMap\Database::INGEST_VALUE, 0)
 		),
-		RedMap\Schema::INSERT_DEFAULT,
+		RedMap\Database::INSERT_DEFAULT,
 		$food,
 		array ('id' => 1, '+' => array ('category' => null)) // FIXME [ingest-nested-implicit]: no error is raised when "category" is not linked here (and missing from selected columns)
 	),
-	$stock->select (array (), array ('id' => true)),
+	$database->select ($stock, array (), array ('id' => true)),
 	array
 	(
 		array ('id' => 1, 'name' => 'Fruit', 'price' => 1, 'quantity' => 0),
@@ -106,20 +110,21 @@ test_ingest
 // Replace
 test_ingest
 (
-	$stock->ingest
+	$database->ingest
 	(
+		$stock,
 		array
 		(
-			'id'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
-			'name'		=> array (RedMap\Schema::INGEST_COLUMN, 'name'),
-			'price'		=> array (RedMap\Schema::INGEST_VALUE, 0),
-			'quantity'	=> array (RedMap\Schema::INGEST_VALUE, 1),
+			'id'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
+			'name'		=> array (RedMap\Database::INGEST_COLUMN, 'name'),
+			'price'		=> array (RedMap\Database::INGEST_VALUE, 0),
+			'quantity'	=> array (RedMap\Database::INGEST_VALUE, 1),
 		),
-		RedMap\Schema::INSERT_REPLACE,
+		RedMap\Database::INSERT_REPLACE,
 		$food,
 		array ('id|ge' => 3)
 	),
-	$stock->select (array (), array ('id' => true)),
+	$database->select ($stock, array (), array ('id' => true)),
 	array
 	(
 		array ('id' => 3, 'name' => 'Carrot', 'price' => 0, 'quantity' => 1),
@@ -130,20 +135,21 @@ test_ingest
 // Upsert
 test_ingest
 (
-	$stock->ingest
+	$database->ingest
 	(
+		$stock,
 		array
 		(
-			'id'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
-			'name'		=> array (RedMap\Schema::INGEST_COLUMN, 'name'),
-			'price'		=> array (RedMap\Schema::INGEST_VALUE, 3),
-			'quantity'	=> array (RedMap\Schema::INGEST_VALUE, 2),
+			'id'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
+			'name'		=> array (RedMap\Database::INGEST_COLUMN, 'name'),
+			'price'		=> array (RedMap\Database::INGEST_VALUE, 3),
+			'quantity'	=> array (RedMap\Database::INGEST_VALUE, 2),
 		),
-		RedMap\Schema::INSERT_UPSERT,
+		RedMap\Database::INSERT_UPSERT,
 		$food,
 		array ('id|le' => 3)
 	),
-	$stock->select (array (), array ('id' => true)),
+	$database->select ($stock, array (), array ('id' => true)),
 	array
 	(
 		array ('id' => 1, 'name' => 'Apple', 'price' => 3, 'quantity' => 2),
@@ -156,19 +162,20 @@ test_ingest
 // Upsert, max
 test_ingest
 (
-	$stock->ingest
+	$database->ingest
 	(
+		$stock,
 		array
 		(
-			'id'		=> array (RedMap\Schema::INGEST_COLUMN, 'id'),
-			'name'		=> array (RedMap\Schema::INGEST_COLUMN, 'name'),
-			'price'		=> array (RedMap\Schema::INGEST_VALUE, 3),
-			'quantity'	=> array (RedMap\Schema::INGEST_VALUE, new RedMap\Max (20)),
+			'id'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
+			'name'		=> array (RedMap\Database::INGEST_COLUMN, 'name'),
+			'price'		=> array (RedMap\Database::INGEST_VALUE, 3),
+			'quantity'	=> array (RedMap\Database::INGEST_VALUE, new RedMap\Max (20)),
 		),
-		RedMap\Schema::INSERT_UPSERT,
+		RedMap\Database::INSERT_UPSERT,
 		$food
 	),
-	$stock->select (array (), array ('id' => true)),
+	$database->select ($stock, array (), array ('id' => true)),
 	array
 	(
 		array ('id' => 1, 'name' => 'Apple', 'price' => 3, 'quantity' => 20),

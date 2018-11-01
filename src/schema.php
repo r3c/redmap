@@ -18,7 +18,7 @@ abstract class Value
 		$this->update = $update;
 	}
 
-	public abstract function build_update ($column);
+	public abstract function build_update ($column, $macro);
 }
 
 class Constant extends Value
@@ -28,9 +28,9 @@ class Constant extends Value
 		parent::__construct ($value, $value);
 	}
 
-	public function build_update ($column)
+	public function build_update ($column, $macro)
 	{
-		return Schema::MACRO_PARAM;
+		return $macro;
 	}
 }
 
@@ -41,9 +41,9 @@ class Coalesce extends Value
 		parent::__construct ($value, $value);
 	}
 
-	public function build_update ($column)
+	public function build_update ($column, $macro)
 	{
-		return 'COALESCE(' . $column . ', ' . Schema::MACRO_PARAM . ')';
+		return 'COALESCE(' . $column . ', ' . $macro . ')';
 	}
 }
 
@@ -54,9 +54,9 @@ class Increment extends Value
 		parent::__construct ($insert !== null ? $insert : $delta, $delta);
 	}
 
-	public function build_update ($column)
+	public function build_update ($column, $macro)
 	{
-		return $column . ' + ' . Schema::MACRO_PARAM;
+		return $column . ' + ' . $macro;
 	}
 }
 
@@ -67,9 +67,9 @@ class Max extends Value
 		parent::__construct ($value, $value);
 	}
 
-	public function build_update ($column)
+	public function build_update ($column, $macro)
 	{
-		return 'GREATEST(' . $column . ', ' . Schema::MACRO_PARAM . ')';
+		return 'GREATEST(' . $column . ', ' . $macro . ')';
 	}
 }
 
@@ -80,17 +80,16 @@ class Min extends Value
 		parent::__construct ($value, $value);
 	}
 
-	public function build_update ($column)
+	public function build_update ($column, $macro)
 	{
-		return 'LEAST(' . $column . ', ' . Schema::MACRO_PARAM . ')';
+		return 'LEAST(' . $column . ', ' . $macro . ')';
 	}
 }
 
-class Schema
+class Database
 {
 	const CLEAN_OPTIMIZE = 0;
 	const CLEAN_TRUNCATE = 1;
-	const FIELD_INTERNAL = 1;
 	const FILTER_GROUP = '~';
 	const FILTER_LINK = '+';
 	const INGEST_COLUMN = 0;
@@ -98,8 +97,6 @@ class Schema
 	const INSERT_DEFAULT = 0;
 	const INSERT_REPLACE = 1;
 	const INSERT_UPSERT = 2;
-	const LINK_IMPLICIT = 1;
-	const LINK_OPTIONAL = 2;
 	const MACRO_PARAM = '?';
 	const MACRO_SCOPE = '@';
 	const SET_INSERT = 0;
@@ -111,49 +108,7 @@ class Schema
 	const SQL_NEXT = ',';
 	const SQL_NOOP = 'SELECT 0';
 
-	public function __construct ($table, $fields, $separator = '__', $links = array ())
-	{
-		$this->defaults = array ();
-
-		foreach ($links as $name => &$link)
-		{
-			if (isset ($link[1]) && ($link[1] & self::LINK_IMPLICIT) !== 0)
-				$this->defaults[$name] = array ();
-		}		
-
-		$this->fields = array ();
-
-		foreach ($fields as $name => $field)
-		{
-			if ($field === null)
-			{
-				$expression = null;
-				$flags = 0;
-			}
-			else if (is_string ($field))
-			{
-				$expression = $fields;
-				$flags = 0;
-			}
-			else
-			{
-				$expression = isset ($field[1]) ? $field[1] : null;
-				$flags = isset ($field[0]) ? $field[0] : 0;
-			}
-
-			$this->fields[$name] = array
-			(
-				$flags,
-				$expression ?: self::MACRO_SCOPE . self::format_name ($name)
-			);
-		}
-
-		$this->links = $links;
-		$this->separator = $separator;
-		$this->table = $table;
-	}
-
-	public function clean ($mode)
+	public function clean ($schema, $mode)
 	{
 		switch ($mode)
 		{
@@ -168,12 +123,12 @@ class Schema
 						'BEGIN ' .
 							'CASE (SELECT ENGINE FROM information_schema.TABLES where TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?) ' .
 								'WHEN \'MEMORY\' THEN ' .
-									'ALTER TABLE ' . self::format_name ($this->table) . ' ENGINE=MEMORY; ' .
+									'ALTER TABLE ' . self::format_name ($schema->table) . ' ENGINE=MEMORY; ' .
 								'ELSE ' .
-									'OPTIMIZE TABLE ' . self::format_name ($this->table) . '; ' .
+									'OPTIMIZE TABLE ' . self::format_name ($schema->table) . '; ' .
 							'END CASE; ' .
 						'END',
-						array ($this->table)
+						array ($schema->table)
 					),
 					array
 					(
@@ -188,29 +143,29 @@ class Schema
 				);
 
 			case self::CLEAN_TRUNCATE:
-				return array (array ('TRUNCATE TABLE ' . self::format_name ($this->table), array ()));
+				return array (array ('TRUNCATE TABLE ' . self::format_name ($schema->table), array ()));
 
 			default:
 				throw new \Exception ("invalid mode '$mode'");
 		}
 	}
 
-	public function delete ($filters = array ())
+	public function delete ($schema, $filters = array ())
 	{
 		$alias = self::format_name ('_0');
 
-		list ($condition, $params) = $this->build_condition ($filters, $alias);
+		list ($condition, $params) = $this->build_condition ($schema, $filters, $alias);
 
 		return array
 		(
 			'DELETE FROM ' . $alias .
-			(' USING ' . self::format_name ($this->table) . ' ' . $alias) .
+			(' USING ' . self::format_name ($schema->table) . ' ' . $alias) .
 			($condition !== '' ? ' WHERE ' . $condition : ''),
 			$params
 		);
 	}
 
-	public function ingest ($assignments, $mode, $source, $filters = array (), $orders = array (), $count = null, $offset = null)
+	public function ingest ($schema, $assignments, $mode, $source, $filters = array (), $orders = array (), $count = null, $offset = null)
 	{
 		if (count ($assignments) === 0)
 			return self::SQL_NOOP;
@@ -229,21 +184,21 @@ class Schema
 		{
 			list ($type, $value) = $assignment;
 
-			$column = $this->get_assignment ($name);
+			$column = $this->get_assignment ($schema, $name);
 			$insert .= self::SQL_NEXT . $column;
 
 			switch ($type)
 			{
 				case self::INGEST_COLUMN:
 					// Make sure parent schema exist
-					$fields = explode ($this->separator, $value);
-					$schema = $source;
+					$fields = explode ($schema->separator, $value);
+					$from = $source;
 
 					for ($i = 0; $i + 1 < count ($fields); ++$i)
-						list ($schema) = $schema->get_link ($fields[$i]);
+						list ($from) = $this->get_link ($from, $fields[$i]);
 
 					// Make sure field exists in target schema
-					$schema->get_expression ($fields[count ($fields) - 1], '');
+					$this->get_expression ($from, $fields[count ($fields) - 1], '');
 
 					// Emit unchanged reference
 					$ingest .= self::SQL_NEXT . self::format_name ($value);
@@ -261,7 +216,7 @@ class Schema
 
 					if ($mode === self::INSERT_UPSERT)
 					{
-						$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
+						$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column, self::MACRO_PARAM);
 						$update_params[] = $value->update;
 					}
 
@@ -272,7 +227,7 @@ class Schema
 			}
 		}
 
-		list ($select, $select_params) = $source->select ($filters, $orders, $count, $offset);
+		list ($select, $select_params) = $this->select ($source, $filters, $orders, $count, $offset);
 
 		$duplicate = count ($update_params) > 0
 			? ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT))
@@ -284,7 +239,7 @@ class Schema
 
 		return array
 		(
-			$verb . ' INTO ' . self::format_name ($this->table) .
+			$verb . ' INTO ' . self::format_name ($schema->table) .
 			' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
 			' SELECT ' . substr ($ingest, strlen (self::SQL_NEXT)) . ' FROM (' . $select . ') ' . $alias .
 			$duplicate,
@@ -292,7 +247,7 @@ class Schema
 		);
 	}
 
-	public function insert ($assignments, $mode = self::INSERT_DEFAULT)
+	public function insert ($schema, $assignments, $mode = self::INSERT_DEFAULT)
 	{
 		if (count ($assignments) === 0)
 			return self::SQL_NOOP;
@@ -305,7 +260,7 @@ class Schema
 
 		foreach ($assignments as $name => $value)
 		{
-			$column = $this->get_assignment ($name);
+			$column = $this->get_assignment ($schema, $name);
 			$value = Value::wrap ($value);
 
 			$insert .= self::SQL_NEXT . $column;
@@ -313,7 +268,7 @@ class Schema
 
 			if ($mode === self::INSERT_UPSERT)
 			{
-				$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
+				$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column, self::MACRO_PARAM);
 				$update_params[] = $value->update;
 			}
 		}
@@ -328,7 +283,7 @@ class Schema
 
 		return array
 		(
-			$verb . ' INTO ' . self::format_name ($this->table) .
+			$verb . ' INTO ' . self::format_name ($schema->table) .
 			' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
 			' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($insert_params), self::MACRO_PARAM)) . ')' .
 			$duplicate,
@@ -336,7 +291,7 @@ class Schema
 		);
 	}
 
-	public function select ($filters = array (), $orders = array (), $count = null, $offset = null)
+	public function select ($schema, $filters = array (), $orders = array (), $count = null, $offset = null)
 	{
 		// Build columns list from links to other schemas for "select" clause
 		$aliases = array ();
@@ -344,13 +299,13 @@ class Schema
 
 		$alias = self::format_alias ($unique++);
 
-		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($filters, $alias, ' WHERE ', '', '', $aliases, $unique);
+		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($schema, $filters, $alias, ' WHERE ', '', '', $aliases, $unique);
 
 		$params = array_merge ($relation_params, $condition_params);
 
 		// Build filtering, ordering and pagination for "order by" and "limit" clauses
 		$pagination = '';
-		$sort = $this->build_sort ($orders, $aliases, $alias);
+		$sort = $this->build_sort ($schema, $orders, $aliases, $alias);
 
 		if ($sort !== '')
 			$pagination .= ' ORDER BY ' . $sort;
@@ -365,14 +320,14 @@ class Schema
 		// Build statement
 		return array
 		(
-			'SELECT ' . $this->build_select ($alias, '') . $select .
-			' FROM ' . self::format_name ($this->table) . ' ' . $alias .
+			'SELECT ' . $this->build_select ($schema, $alias, '') . $select .
+			' FROM ' . self::format_name ($schema->table) . ' ' . $alias .
 			$relation . $condition . $pagination,
 			$params
 		);
 	}
 
-	public function update ($assignments, $filters)
+	public function update ($schema, $assignments, $filters)
 	{
 		if (count ($assignments) === 0)
 			return self::SQL_NOOP;
@@ -383,10 +338,10 @@ class Schema
 
 		foreach ($assignments as $name => $value)
 		{
-			$column = $this->get_assignment ($name);
+			$column = $this->get_assignment ($schema, $name);
 			$value = Value::wrap ($value);
 
-			$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column);
+			$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column, self::MACRO_PARAM);
 			$update_params[] = $value->update;
 		}
 
@@ -396,12 +351,12 @@ class Schema
 
 		$current = self::format_alias ($unique++);
 
-		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($filters, $current, ' WHERE ', '', '', $aliases, $unique);
+		list ($select, $relation, $relation_params, $condition, $condition_params) = $this->build_filter ($schema, $filters, $current, ' WHERE ', '', '', $aliases, $unique);
 
 		// Build query with parameters
 		return array
 		(
-			'UPDATE ' . self::format_name ($this->table) . ' ' . $current .
+			'UPDATE ' . self::format_name ($schema->table) . ' ' . $current .
 			$relation .
 			' SET ' . substr ($update, strlen (self::SQL_NEXT)) .
 			$condition,
@@ -409,7 +364,7 @@ class Schema
 		);
 	}
 
-	private function build_condition ($filters, $source)
+	private function build_condition ($schema, $filters, $source)
 	{
 		static $comparers;
 		static $logicals;
@@ -460,7 +415,7 @@ class Schema
 			// Complex sub-condition group
 			if (is_array ($value) && is_numeric ($name))
 			{
-				list ($group_condition, $group_params) = $this->build_condition ($value, $source);
+				list ($group_condition, $group_params) = $this->build_condition ($schema, $value, $source);
 
 				if ($group_condition !== '')
 				{
@@ -489,7 +444,7 @@ class Schema
 					list ($lhs, $rhs) = $comparers['is'];
 
 				// Build field condition
-				$condition .= $lhs . $this->get_expression ($name, $source) . $rhs;
+				$condition .= $lhs . $this->get_expression ($schema, $name, $source) . $rhs;
 				$params[] = $value;
 			}
 		}
@@ -497,11 +452,11 @@ class Schema
 		return array ($condition, $params);
 	}
 
-	private function build_filter ($filters, $alias, $begin, $end, $prefix, &$aliases, &$unique)
+	private function build_filter ($schema, $filters, $alias, $begin, $end, $prefix, &$aliases, &$unique)
 	{
 		if ($filters !== null)
 		{
-			list ($condition, $condition_params) = $this->build_condition ($filters, $alias);
+			list ($condition, $condition_params) = $this->build_condition ($schema, $filters, $alias);
 
 			if ($condition !== '')
 			{
@@ -516,27 +471,27 @@ class Schema
 			$condition_params = array ();
 		}
 
-		$links = isset ($filters[self::FILTER_LINK]) ? $filters[self::FILTER_LINK] + $this->defaults : $this->defaults;
+		$links = isset ($filters[self::FILTER_LINK]) ? $filters[self::FILTER_LINK] + $schema->defaults : $schema->defaults;
 		$relation = '';
 		$relation_params = array ();
 		$select = '';
 
 		foreach ($links as $name => $children)
 		{
-			list ($link_schema, $link_flags, $link_relations) = $this->get_link ($name);
+			list ($link_schema, $link_flags, $link_relations) = $this->get_link ($schema, $name);
 
 			$link_alias = self::format_alias ($unique++);
 
 			// Build fields selection and join to foreign table
-			$namespace = $prefix . $name . $this->separator;
+			$namespace = $prefix . $name . $schema->separator;
 
-			if (($link_flags & self::LINK_OPTIONAL) === 0)
+			if (($link_flags & Schema::LINK_OPTIONAL) === 0)
 				$type = 'INNER';
 			else
 				$type = 'LEFT';
 
 			$relation .= ' ' . $type . ' JOIN (' . self::format_name ($link_schema->table) . ' ' . $link_alias;
-			$select .= self::SQL_NEXT . $link_schema->build_select ($link_alias, $namespace);
+			$select .= self::SQL_NEXT . $this->build_select ($link_schema, $link_alias, $namespace);
 
 			// Resolve relation connections
 			$connect_relation = ') ON ';
@@ -545,17 +500,17 @@ class Schema
 
 			foreach ($link_relations as $parent_name => $foreign_name)
 			{
-				$foreign_column = $link_schema->get_expression ($foreign_name, $link_alias);
+				$foreign_column = $this->get_expression ($link_schema, $foreign_name, $link_alias);
 
 				// Connection depends on field from parent schema
-				if (isset ($this->fields[$parent_name]))
-					$parent_column = $this->get_expression ($parent_name, $alias);
+				if (isset ($schema->fields[$parent_name]))
+					$parent_column = $this->get_expression ($schema, $parent_name, $alias);
 
 				// Connection depends on manually provided value
 				else
 				{
 					if ($children === null || !isset ($children[$parent_name]))
-						throw new \Exception ("relation from $this->table to $link_schema->table.$foreign_name through link '$name' depends on unspecified value '$parent_name'");
+						throw new \Exception ("relation from $schema->table to $link_schema->table.$foreign_name through link '$name' depends on unspecified value '$parent_name'");
 
 					$connect_relation_params[] = $children[$parent_name];
 					$parent_column = self::MACRO_PARAM;
@@ -570,7 +525,7 @@ class Schema
 			// Recursively merge nested fields and tables
 			$link_aliases = array ();
 
-			list ($inner_select, $inner_relation, $inner_relation_params, $inner_condition, $inner_condition_params) = $link_schema->build_filter ($children, $link_alias, $begin, $end, $namespace, $link_aliases, $unique);
+			list ($inner_select, $inner_relation, $inner_relation_params, $inner_condition, $inner_condition_params) = $this->build_filter ($link_schema, $children, $link_alias, $begin, $end, $namespace, $link_aliases, $unique);
 
 			if ($inner_condition !== '')
 			{
@@ -590,22 +545,22 @@ class Schema
 		return array ($select, $relation, $relation_params, $condition, $condition_params);
 	}
 
-	private function build_select ($source, $namespace)
+	private function build_select ($schema, $source, $namespace)
 	{
 		$query = '';
 
-		foreach ($this->fields as $name => $field)
+		foreach ($schema->fields as $name => $field)
 		{
-			if (($field[0] & self::FIELD_INTERNAL) !== 0)
+			if (($field[0] & Schema::FIELD_INTERNAL) !== 0)
 				continue;
 
-			$query .= self::SQL_NEXT . $this->get_expression ($name, $source) . ' ' . self::format_name ($namespace . $name);
+			$query .= self::SQL_NEXT . $this->get_expression ($schema, $name, $source) . ' ' . self::format_name ($namespace . $name);
 		}
 
 		return (string)substr ($query, strlen (self::SQL_NEXT));
 	}
 
-	private function build_sort ($orders, $aliases, $source)
+	private function build_sort ($schema, $orders, $aliases, $source)
 	{
 		$query = '';
 
@@ -614,14 +569,14 @@ class Schema
 		{
 			foreach ($orders[self::FILTER_LINK] as $name => $link_orders)
 			{
-				list ($link_schema, $link_flags, $link_relations) = $this->get_link ($name);
+				list ($link_schema, $link_flags, $link_relations) = $this->get_link ($schema, $name);
 
 				if (!isset ($aliases[$name]))
-					throw new \Exception ("can't order by fields from non-linked schema '$this->table.$name'");
+					throw new \Exception ("can't order by fields from non-linked schema '$schema->table.$name'");
 
 				list ($link_alias, $link_aliases) = $aliases[$name];
 
-				$query .= self::SQL_NEXT . $link_schema->build_sort ($link_orders, $link_aliases, $link_alias);
+				$query .= self::SQL_NEXT . $this->build_sort ($link_schema, $link_orders, $link_aliases, $link_alias);
 			}
 		}
 
@@ -631,7 +586,7 @@ class Schema
 			if ($name === self::FILTER_LINK)
 				continue;
 
-			$query .= self::SQL_NEXT . $this->get_expression ($name, $source) . ($ascending ? '' : ' DESC');
+			$query .= self::SQL_NEXT . $this->get_expression ($schema, $name, $source) . ($ascending ? '' : ' DESC');
 		}
 
 		return (string)substr ($query, strlen (self::SQL_NEXT));
@@ -639,52 +594,65 @@ class Schema
 
 	/*
 	** Get assignable column from given field name.
+	** $schema:	source schema
 	** $name:	field name
 	** return:	(SQL fragment, true if field is primary)
 	*/
-	private function get_assignment ($name)
+	private function get_assignment ($schema, $name)
 	{
 		static $pattern;
 
 		if (!isset ($pattern))
 			$pattern = '/^[[:blank:]]*' . preg_quote (self::MACRO_SCOPE, '/') . '[[:blank:]]*(?:' . preg_quote (self::SQL_BEGIN, '/') . ')?([0-9A-Za-z_]+)(?:' . preg_quote (self::SQL_END, '/') . ')?[[:blank:]]*$/';
 
-		if (!isset ($this->fields[$name]))
-			throw new \Exception ("can't assign to unknown field '$this->table.$name'");
+		if (!isset ($schema->fields[$name]))
+			throw new \Exception ("can't assign to unknown field '$schema->table.$name'");
 
-		$field = $this->fields[$name];
+		$expression = $schema->fields[$name][1];
 
-		if (!preg_match ($pattern, $field[1], $match))
-			throw new \Exception ("can't assign to read-only field '$this->table.$name'");
+		// Assume column name is field name when no expression is defined
+		if ($expression === null)
+			return self::format_name ($name);
 
-		return self::format_name ($match[1]);
+		// Otherwise try to match column name in expression
+		if (preg_match ($pattern, $expression, $match))
+			return self::format_name ($match[1]);
+
+		throw new \Exception ("can't assign to read-only field '$schema->table.$name'");
 	}
 
 	/*
 	** Get selectable expression from given field name.
+	** $schema:	source schema
 	** $name:	field name
 	** $source:	source table alias
 	** return:	SQL fragment
 	*/
-	private function get_expression ($name, $source)
+	private function get_expression ($schema, $name, $source)
 	{
-		if (!isset ($this->fields[$name]))
-			throw new \Exception ("cannot reference unknown field '$this->table.$name'");
+		if (!isset ($schema->fields[$name]))
+			throw new \Exception ("cannot reference unknown field '$schema->table.$name'");
 
-		return str_replace (self::MACRO_SCOPE, $source . '.', $this->fields[$name][1]);
+		$expression = $schema->fields[$name][1];
+
+		if ($expression !== null)
+			return str_replace (self::MACRO_SCOPE, $source . '.', $expression);
+
+		return $source . '.' . self::format_name ($name);
 	}
 
 	/*
 	** Get linked schema by name.
+	** $schema:	source schema
 	** $name:	link name
 	** return:	(schema, flags, relations)
 	*/
-	private function get_link ($name)
+	private function get_link ($schema, $name)
 	{
-		if (!isset ($this->links[$name]))
-			throw new \Exception ("can't link unknown relation '$name' to schema '$this->table'");
+		if (!isset ($schema->links[$name]))
+			throw new \Exception ("can't link unknown relation '$name' to schema '$schema->table'");
 
-		$link = $this->links[$name];
+		$link = $schema->links[$name];
 
 		return array (is_callable ($link[0]) ? $link[0] () : $link[0], $link[1], $link[2]);
 	}
@@ -697,6 +665,51 @@ class Schema
 	private static function format_name ($name)
 	{
 		return self::SQL_BEGIN . $name . self::SQL_END;
+	}
+}
+
+class Schema
+{
+	const FIELD_INTERNAL = 1;
+	const LINK_IMPLICIT = 1;
+	const LINK_OPTIONAL = 2;
+
+	public function __construct ($table, $fields, $separator = '__', $links = array ())
+	{
+		$this->defaults = array ();
+
+		foreach ($links as $name => &$link)
+		{
+			if (isset ($link[1]) && ($link[1] & self::LINK_IMPLICIT) !== 0)
+				$this->defaults[$name] = array ();
+		}
+
+		$this->fields = array ();
+
+		foreach ($fields as $name => $field)
+		{
+			if ($field === null)
+			{
+				$expression = null;
+				$flags = 0;
+			}
+			else if (is_string ($field))
+			{
+				$expression = $fields;
+				$flags = 0;
+			}
+			else
+			{
+				$expression = isset ($field[1]) ? $field[1] : null;
+				$flags = isset ($field[0]) ? $field[0] : 0;
+			}
+
+			$this->fields[$name] = array ($flags, $expression);
+		}
+
+		$this->links = $links;
+		$this->separator = $separator;
+		$this->table = $table;
 	}
 }
 
