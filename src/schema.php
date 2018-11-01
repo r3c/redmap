@@ -695,7 +695,7 @@ class Schema
 			}
 			else if (is_string ($field))
 			{
-				$expression = $fields;
+				$expression = $field;
 				$flags = 0;
 			}
 			else

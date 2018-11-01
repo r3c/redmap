@@ -10,8 +10,8 @@ $company = new RedMap\Schema
 	array
 	(
 		'id'	=> null,
-		'name'	=> null,
-		'ipo'	=> null
+		'name'	=> 'company_name',
+		'ipo'	=> '@ipo_year'
 	)
 );
 

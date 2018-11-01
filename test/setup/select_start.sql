@@ -1,12 +1,12 @@
 
 CREATE TABLE `company` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(64) NOT NULL,
-  `ipo` int(10) unsigned NULL,
+  `company_name` varchar(64) NOT NULL,
+  `ipo_year` int(10) unsigned NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `company` (`id`, `name`, `ipo`) VALUES
+INSERT INTO `company` (`id`, `company_name`, `ipo_year`) VALUES
 (1, 'Google', 2004),
 (2, 'Facebook', 2012),
 (3, 'Amazon', 1997),
