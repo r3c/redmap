@@ -1,8 +1,6 @@
 <?php
 
 require_once ('../src/redmap.php');
-require_once ('../src/clients/mysqli.php');
-require_once ('../src/databases/sql.php');
 require_once ('helper/sql.php');
 
 function test_insert ($insert, $get, $expected)
@@ -26,9 +24,7 @@ $message = new RedMap\Schema
 	)
 );
 
-sql_connect ();
-
-$database = new RedMap\Databases\SQLDatabase ();
+$database = sql_connect ();
 
 // Insert, default, constants
 test_insert

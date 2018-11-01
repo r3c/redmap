@@ -202,9 +202,9 @@ function _create_database ($scheme, $client)
 	{
 		case 'mysql':
 		case 'mysqli':
-			require_once ($base . '/databases/sql.php');
+			require_once ($base . '/databases/mysql.php');
 
-			return new Databases\SQLDatabase ();
+			return new Databases\MySQLDatabase ();
 
 		default:
 			throw new \Exception ('scheme "' . $scheme . '" is not supported');

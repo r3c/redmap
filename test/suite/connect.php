@@ -1,6 +1,5 @@
 <?php
 
-require_once ('../src/clients/mysqli.php');
 require_once ('helper/sql.php');
 
 // Start

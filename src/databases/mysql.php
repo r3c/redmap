@@ -2,7 +2,7 @@
 
 namespace RedMap\Databases;
 
-class SQLDatabase implements \RedMap\Database
+class MySQLDatabase implements \RedMap\Database
 {
 	const FILTER_GROUP = '~';
 	const FILTER_LINK = '+';

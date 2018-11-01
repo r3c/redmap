@@ -39,12 +39,14 @@ function sql_connect ()
 {
 	global $client;
 
-	list ($client) = RedMap\create_database ('mysqli://root@127.0.0.1/redmap?charset=utf-8', function ($client, $query)
+	list ($client, $database) = RedMap\create_database ('mysqli://root@127.0.0.1/redmap?charset=utf-8', function ($client, $query)
 	{
 		assert (false, 'Query execution failed: ' . $client->error ());
 	});
 
 	assert ($client->connect (), 'Connection to database');
+
+	return $database;
 }
 
 function sql_import ($path)

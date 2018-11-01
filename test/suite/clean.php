@@ -1,15 +1,12 @@
 <?php
 
 require_once ('../src/redmap.php');
-require_once ('../src/clients/mysqli.php');
-require_once ('../src/databases/sql.php');
 require_once ('helper/sql.php');
 
 // Start
-sql_connect ();
-sql_import ('setup/clean_start.sql');
+$database = sql_connect ();
 
-$database = new RedMap\Databases\SQLDatabase ();
+sql_import ('setup/clean_start.sql');
 
 foreach (array ('score_memory', 'score_myisam') as $table)
 {
