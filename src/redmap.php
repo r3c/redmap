@@ -98,18 +98,18 @@ interface Database
 {
 	const CLEAN_OPTIMIZE = 0;
 	const CLEAN_TRUNCATE = 1;
-	const INGEST_COLUMN = 0;
-	const INGEST_VALUE = 1;
 	const INSERT_APPEND = 0;
 	const INSERT_REPLACE = 1;
 	const INSERT_UPSERT = 2;
+	const SOURCE_COLUMN = 0;
+	const SOURCE_VALUE = 1;
 
 	function clean ($schema, $mode);
 	function connect ();
 	function delete ($schema, $filters = array ());
-	function ingest ($schema, $assignments, $mode, $source, $filters = array (), $orders = array (), $count = null, $offset = null);
 	function insert ($schema, $assignments, $mode = self::INSERT_APPEND);
 	function select ($schema, $filters = array (), $orders = array (), $count = null, $offset = null);
+	function source ($schema, $assignments, $mode, $origin, $filters = array (), $orders = array (), $count = null, $offset = null);
 	function update ($schema, $assignments, $filters);
 }
 

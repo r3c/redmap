@@ -74,17 +74,17 @@ class MySQLDatabase implements \RedMap\Database
 		);
 	}
 
-	public function ingest ($schema, $assignments, $mode, $source, $filters = array (), $orders = array (), $count = null, $offset = null)
+	public function source ($schema, $assignments, $mode, $origin, $filters = array (), $orders = array (), $count = null, $offset = null)
 	{
 		if (count ($assignments) === 0)
 			return true;
 
 		$alias = self::format_alias (0);
 
-		$ingest = '';
-		$ingest_params = array ();
-
 		$insert = '';
+
+		$source = '';
+		$source_params = array ();		
 
 		$update = '';
 		$update_params = array ();
@@ -98,10 +98,10 @@ class MySQLDatabase implements \RedMap\Database
 
 			switch ($type)
 			{
-				case self::INGEST_COLUMN:
+				case self::SOURCE_COLUMN:
 					// Make sure parent schema exist
 					$fields = explode ($schema->separator, $value);
-					$from = $source;
+					$from = $origin;
 
 					for ($i = 0; $i + 1 < count ($fields); ++$i)
 						list ($from) = $this->get_link ($from, $fields[$i]);
@@ -110,18 +110,18 @@ class MySQLDatabase implements \RedMap\Database
 					$this->get_expression ($from, $fields[count ($fields) - 1], '');
 
 					// Emit unchanged reference
-					$ingest .= self::SQL_NEXT . self::format_name ($value);
+					$source .= self::SQL_NEXT . self::format_name ($value);
 
 					if ($mode === self::INSERT_UPSERT)
 						$update .= self::SQL_NEXT . $column . ' = ' . $alias . '.' . self::format_name ($value);
 
 					break;
 
-				case self::INGEST_VALUE:
+				case self::SOURCE_VALUE:
 					$value = \RedMap\Value::wrap ($value);
 
-					$ingest .= self::SQL_NEXT . self::MACRO_PARAM;
-					$ingest_params[] = $value->initial;
+					$source .= self::SQL_NEXT . self::MACRO_PARAM;
+					$source_params[] = $value->initial;
 
 					if ($mode === self::INSERT_UPSERT)
 					{
@@ -136,7 +136,7 @@ class MySQLDatabase implements \RedMap\Database
 			}
 		}
 
-		list ($select, $select_params) = $this->build_select ($source, $filters, $orders, $count, $offset);
+		list ($select, $select_params) = $this->build_select ($origin, $filters, $orders, $count, $offset);
 
 		// Build and execute statement
 		$duplicate = count ($update_params) > 0
@@ -151,9 +151,9 @@ class MySQLDatabase implements \RedMap\Database
 		(
 			$verb . ' INTO ' . self::format_name ($schema->table) .
 			' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
-			' SELECT ' . substr ($ingest, strlen (self::SQL_NEXT)) . ' FROM (' . $select . ') ' . $alias .
+			' SELECT ' . substr ($source, strlen (self::SQL_NEXT)) . ' FROM (' . $select . ') ' . $alias .
 			$duplicate,
-			array_merge ($ingest_params, $select_params, $update_params)
+			array_merge ($source_params, $select_params, $update_params)
 		);
 	}
 

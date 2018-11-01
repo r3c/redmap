@@ -3,14 +3,14 @@
 require_once ('../src/redmap.php');
 require_once ('helper/sql.php');
 
-function test_ingest ($ingest, $select, $expected)
+function test_source ($source, $select, $expected)
 {
 	global $database;
 
-	sql_import ($database, 'setup/ingest_start.sql');
-	assert ($ingest () !== null);
+	sql_import ($database, 'setup/source_start.sql');
+	assert ($source () !== null);
 	sql_compare ($select (), $expected);
-	sql_import ($database, 'setup/ingest_stop.sql');
+	sql_import ($database, 'setup/source_stop.sql');
 }
 
 $category = new RedMap\Schema
@@ -54,19 +54,19 @@ $stock = new RedMap\Schema
 $database = sql_connect ();
 
 // Insert
-test_ingest
+test_source
 (
 	function () use ($database, $stock, $food)
 	{
-		return $database->ingest
+		return $database->source
 		(
 			$stock,
 			array
 			(
-				'id'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
-				'name'		=> array (RedMap\Database::INGEST_COLUMN, 'name'),
-				'price'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
-				'quantity'	=> array (RedMap\Database::INGEST_VALUE, 0)
+				'id'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
+				'name'		=> array (RedMap\Database::SOURCE_COLUMN, 'name'),
+				'price'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
+				'quantity'	=> array (RedMap\Database::SOURCE_VALUE, 0)
 			),
 			RedMap\Database::INSERT_APPEND,
 			$food,
@@ -87,23 +87,23 @@ test_ingest
 );
 
 // Insert, child reference
-test_ingest
+test_source
 (
 	function () use ($database, $stock, $food)
 	{
-		return $database->ingest
+		return $database->source
 		(
 			$stock,
 			array
 			(
-				'id'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
-				'name'		=> array (RedMap\Database::INGEST_COLUMN, 'category__name'),
-				'price'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
-				'quantity'	=> array (RedMap\Database::INGEST_VALUE, 0)
+				'id'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
+				'name'		=> array (RedMap\Database::SOURCE_COLUMN, 'category__name'),
+				'price'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
+				'quantity'	=> array (RedMap\Database::SOURCE_VALUE, 0)
 			),
 			RedMap\Database::INSERT_APPEND,
 			$food,
-			array ('id' => 1, '+' => array ('category' => null)) // FIXME [ingest-nested-implicit]: no error is raised when "category" is not linked here (and missing from selected columns)
+			array ('id' => 1, '+' => array ('category' => null)) // FIXME [source-nested-implicit]: no error is raised when "category" is not linked here (and missing from selected columns)
 		);
 	},
 	function () use ($database, $stock)
@@ -119,19 +119,19 @@ test_ingest
 );
 
 // Replace
-test_ingest
+test_source
 (
 	function () use ($database, $stock, $food)
 	{
-		return $database->ingest
+		return $database->source
 		(
 			$stock,
 			array
 			(
-				'id'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
-				'name'		=> array (RedMap\Database::INGEST_COLUMN, 'name'),
-				'price'		=> array (RedMap\Database::INGEST_VALUE, 0),
-				'quantity'	=> array (RedMap\Database::INGEST_VALUE, 1),
+				'id'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
+				'name'		=> array (RedMap\Database::SOURCE_COLUMN, 'name'),
+				'price'		=> array (RedMap\Database::SOURCE_VALUE, 0),
+				'quantity'	=> array (RedMap\Database::SOURCE_VALUE, 1),
 			),
 			RedMap\Database::INSERT_REPLACE,
 			$food,
@@ -150,19 +150,19 @@ test_ingest
 );
 
 // Upsert
-test_ingest
+test_source
 (
 	function () use ($database, $stock, $food)
 	{
-		return $database->ingest
+		return $database->source
 		(
 			$stock,
 			array
 			(
-				'id'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
-				'name'		=> array (RedMap\Database::INGEST_COLUMN, 'name'),
-				'price'		=> array (RedMap\Database::INGEST_VALUE, 3),
-				'quantity'	=> array (RedMap\Database::INGEST_VALUE, 2),
+				'id'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
+				'name'		=> array (RedMap\Database::SOURCE_COLUMN, 'name'),
+				'price'		=> array (RedMap\Database::SOURCE_VALUE, 3),
+				'quantity'	=> array (RedMap\Database::SOURCE_VALUE, 2),
 			),
 			RedMap\Database::INSERT_UPSERT,
 			$food,
@@ -183,19 +183,19 @@ test_ingest
 );
 
 // Upsert, max
-test_ingest
+test_source
 (
 	function () use ($database, $stock, $food)
 	{
-		return $database->ingest
+		return $database->source
 		(
 			$stock,
 			array
 			(
-				'id'		=> array (RedMap\Database::INGEST_COLUMN, 'id'),
-				'name'		=> array (RedMap\Database::INGEST_COLUMN, 'name'),
-				'price'		=> array (RedMap\Database::INGEST_VALUE, 3),
-				'quantity'	=> array (RedMap\Database::INGEST_VALUE, new RedMap\Max (20)),
+				'id'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
+				'name'		=> array (RedMap\Database::SOURCE_COLUMN, 'name'),
+				'price'		=> array (RedMap\Database::SOURCE_VALUE, 3),
+				'quantity'	=> array (RedMap\Database::SOURCE_VALUE, new RedMap\Max (20)),
 			),
 			RedMap\Database::INSERT_UPSERT,
 			$food
