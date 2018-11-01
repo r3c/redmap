@@ -1,6 +1,6 @@
 <?php
 
-require_once ('../src/schema.php');
+require_once ('../src/redmap.php');
 require_once ('../src/clients/mysqli.php');
 require_once ('../src/databases/sql.php');
 require_once ('helper/sql.php');
