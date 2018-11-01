@@ -5,10 +5,12 @@ require_once ('helper/sql.php');
 
 function test_insert ($insert, $select, $expected)
 {
-	sql_import ('setup/insert_start.sql');
+	global $database;
+
+	sql_import ($database, 'setup/insert_start.sql');
 	assert ($insert () != null);
 	sql_compare ($select (), $expected);
-	sql_import ('setup/insert_stop.sql');
+	sql_import ($database, 'setup/insert_stop.sql');
 }
 
 $message = new RedMap\Schema

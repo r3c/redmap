@@ -5,10 +5,12 @@ require_once ('helper/sql.php');
 
 function test_update ($update, $select, $expected)
 {
-	sql_import ('setup/update_start.sql');
+	global $database;
+
+	sql_import ($database, 'setup/update_start.sql');
 	assert ($update () !== null);
 	sql_compare ($select (), $expected);
-	sql_import ('setup/update_stop.sql');
+	sql_import ($database, 'setup/update_stop.sql');
 }
 
 $player = new RedMap\Schema

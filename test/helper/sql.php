@@ -22,8 +22,6 @@ function sql_compare ($returned, $expected)
 
 function sql_connect ()
 {
-	global $database;
-
 	$database = RedMap\create_database ('mysqli://root@127.0.0.1/redmap?charset=utf-8', function ($client, $query)
 	{
 		assert (false, 'Query execution failed: ' . $client->error ());
@@ -34,10 +32,8 @@ function sql_connect ()
 	return $database;
 }
 
-function sql_import ($path)
+function sql_import ($database, $path)
 {
-	global $database;
-
 	$class = new ReflectionClass ('RedMap\\Clients\\MySQLiClient');
 
 	$property = $class->getProperty ('connection');

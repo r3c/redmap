@@ -5,10 +5,12 @@ require_once ('helper/sql.php');
 
 function test_ingest ($ingest, $select, $expected)
 {
-	sql_import ('setup/ingest_start.sql');
+	global $database;
+
+	sql_import ($database, 'setup/ingest_start.sql');
 	assert ($ingest () !== null);
 	sql_compare ($select (), $expected);
-	sql_import ('setup/ingest_stop.sql');
+	sql_import ($database, 'setup/ingest_stop.sql');
 }
 
 $category = new RedMap\Schema

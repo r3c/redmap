@@ -6,7 +6,7 @@ require_once ('helper/sql.php');
 // Start
 $database = sql_connect ();
 
-sql_import ('setup/clean_start.sql');
+sql_import ($database, 'setup/clean_start.sql');
 
 foreach (array ('score_memory', 'score_myisam') as $table)
 {
@@ -32,7 +32,7 @@ foreach (array ('score_memory', 'score_myisam') as $table)
 }
 
 // Stop
-sql_import ('setup/clean_stop.sql');
+sql_import ($database, 'setup/clean_stop.sql');
 
 echo 'OK';
 

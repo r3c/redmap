@@ -46,7 +46,7 @@ $report = new RedMap\Schema
 
 $database = sql_connect ();
 
-sql_import ('setup/select_start.sql');
+sql_import ($database, 'setup/select_start.sql');
 
 // Select, 1 table, default 'equal' operator
 sql_compare
@@ -237,7 +237,7 @@ sql_compare
 	)
 );
 
-sql_import ('setup/select_stop.sql');
+sql_import ($database, 'setup/select_stop.sql');
 
 echo 'OK';
 
