@@ -6,7 +6,7 @@ require_once ('helper/sql.php');
 // Start
 $engine = sql_connect ();
 
-sql_import ($engine, 'setup/clean_start.sql');
+sql_import ($engine, 'setup/wash_start.sql');
 
 foreach (array ('score_memory', 'score_myisam') as $table)
 {
@@ -20,19 +20,13 @@ foreach (array ('score_memory', 'score_myisam') as $table)
 		)
 	);
 
-	// Optimize
-	assert ($engine->clean ($score, RedMap\Engine::CLEAN_OPTIMIZE) !== null);
+	assert ($engine->wash ($score) !== null);
 
 	sql_compare ($engine->select ($score), array (array ('player' => 'me', 'value' => 42)));
-
-	// Truncate
-	assert ($engine->clean ($score, RedMap\Engine::CLEAN_TRUNCATE) !== null);
-
-	sql_compare ($engine->select ($score), array ());
 }
 
 // Stop
-sql_import ($engine, 'setup/clean_stop.sql');
+sql_import ($engine, 'setup/wash_stop.sql');
 
 echo 'OK';
 

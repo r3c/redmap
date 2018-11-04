@@ -19,41 +19,6 @@ class MySQLEngine implements \RedMap\Engine
 		$this->client = $client;
 	}
 
-	public function clean ($schema, $mode)
-	{
-		switch ($mode)
-		{
-			case self::CLEAN_OPTIMIZE:
-				$procedure = 'redmap_' . uniqid ();
-
-				if (!$this->client->execute
-				(
-					'CREATE PROCEDURE ' . self::format_name ($procedure) . '() ' .
-					'BEGIN ' .
-						'CASE (SELECT ENGINE FROM information_schema.TABLES where TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?) ' .
-							'WHEN \'MEMORY\' THEN ' .
-								'ALTER TABLE ' . self::format_name ($schema->table) . ' ENGINE=MEMORY; ' .
-							'ELSE ' .
-								'OPTIMIZE TABLE ' . self::format_name ($schema->table) . '; ' .
-						'END CASE; ' .
-					'END',
-					array ($schema->table)
-				))
-					return false;
-
-				$success = $this->client->execute ('CALL ' . self::format_name ($procedure) . '()');
-				$success = $this->client->execute ('DROP PROCEDURE IF EXISTS ' . self::format_name ($procedure)) && $success;
-
-				return $success;
-
-			case self::CLEAN_TRUNCATE:
-				return $this->client->execute ('TRUNCATE TABLE ' . self::format_name ($schema->table));
-
-			default:
-				throw new \RedMap\RuntimeException ("invalid mode '$mode'");
-		}
-	}
-
 	public function connect ()
 	{
 		return $this->client->connect ();
@@ -244,6 +209,33 @@ class MySQLEngine implements \RedMap\Engine
 			$condition,
 			array_merge ($relation_params, $update_params, $condition_params)
 		);
+	}
+
+	public function wash ($schema)
+	{
+		$procedure = 'redmap_' . uniqid ();
+
+		if ($this->client->execute
+		(
+			'CREATE PROCEDURE ' . self::format_name ($procedure) . '() ' .
+			'BEGIN ' .
+				'CASE (SELECT ENGINE FROM information_schema.TABLES where TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?) ' .
+					'WHEN \'MEMORY\' THEN ' .
+						'ALTER TABLE ' . self::format_name ($schema->table) . ' ENGINE=MEMORY; ' .
+					'ELSE ' .
+						'OPTIMIZE TABLE ' . self::format_name ($schema->table) . '; ' .
+				'END CASE; ' .
+			'END',
+			array ($schema->table)
+		) === null)
+		{
+			return false;
+		}
+
+		$success = $this->client->execute ('CALL ' . self::format_name ($procedure) . '()');
+		$success = $this->client->execute ('DROP PROCEDURE IF EXISTS ' . self::format_name ($procedure)) && $success;
+
+		return $success;
 	}
 
 	private function build_columns ($schema, $source, $namespace)

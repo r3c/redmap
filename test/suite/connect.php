@@ -1,5 +1,6 @@
 <?php
 
+require_once ('../src/redmap.php');
 require_once ('helper/sql.php');
 
 // Start
