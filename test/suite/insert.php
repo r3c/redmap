@@ -13,6 +13,15 @@ function test_insert ($insert, $select, $expected)
 	sql_import ($engine, 'setup/insert_stop.sql');
 }
 
+$identity = new RedMap\Schema
+(
+	'identity',
+	array
+	(
+		'id'	=> null
+	)
+);
+
 $message = new RedMap\Schema
 (
 	'message',
@@ -28,7 +37,15 @@ $message = new RedMap\Schema
 
 $engine = sql_connect ();
 
-// Insert, default, constants
+// Insert, append, empty
+test_insert
+(
+	function () use ($engine, $identity) { return $engine->insert ($identity); },
+	function () use ($engine, $identity) { return $engine->select ($identity, array (), array ('id' => true)); },
+	array (array ('id' => 1))
+);
+
+// Insert, append, constants
 test_insert
 (
 	function () use ($engine, $message) { return $engine->insert ($message, array ('sender' => 3, 'recipient' => 4, 'time' => 500, 'text' => 'Hello, World!')); },
@@ -36,7 +53,7 @@ test_insert
 	array (array ('id' => 3, 'sender' => 3, 'recipient' => 4, 'time' => 500, 'text' => 'Hello, World!'))
 );
 
-// Insert, default, coalesce (use value) + increment (initial) + max (use value) + min (use value)
+// Insert, append, coalesce (use value) + increment (initial) + max (use value) + min (use value)
 test_insert
 (
 	function () use ($engine, $message) { return $engine->insert ($message, array ('sender' => new RedMap\Max (3), 'recipient' => new RedMap\Min (4), 'time' => new RedMap\Increment (100, 500), 'text' => new RedMap\Coalesce ('Hello, World!'))); },

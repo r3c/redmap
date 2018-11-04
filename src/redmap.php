@@ -123,7 +123,7 @@ interface Engine
 	function clean ($schema, $mode);
 	function connect ();
 	function delete ($schema, $filters = array ());
-	function insert ($schema, $assignments, $mode = self::INSERT_APPEND);
+	function insert ($schema, $assignments = array (), $mode = self::INSERT_APPEND);
 	function select ($schema, $filters = array (), $orders = array (), $count = null, $offset = null);
 	function source ($schema, $assignments, $mode, $origin, $filters = array (), $orders = array (), $count = null, $offset = null);
 	function update ($schema, $assignments, $filters);

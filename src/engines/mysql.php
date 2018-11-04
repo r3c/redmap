@@ -157,11 +157,8 @@ class MySQLEngine implements \RedMap\Engine
 		);
 	}
 
-	public function insert ($schema, $assignments, $mode = self::INSERT_APPEND)
+	public function insert ($schema, $assignments = array (), $mode = self::INSERT_APPEND)
 	{
-		if (count ($assignments) === 0)
-			return null;
-
 		$insert = '';
 		$insert_params = array ();
 
