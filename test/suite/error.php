@@ -4,7 +4,7 @@ require_once ('helper/sql.php');
 
 $failed = false;
 
-$database = sql_connect (function ($error, $query) use (&$failed)
+$engine = sql_connect (function ($error, $query) use (&$failed)
 {
 	assert (strpos ($error, 'syntax') !== false);
 	assert (strpos ($query, 'ERROR') !== false);
@@ -13,7 +13,7 @@ $database = sql_connect (function ($error, $query) use (&$failed)
 });
 
 // Execute invalid query
-assert ($database->client->execute ('ERROR') === null);
+assert ($engine->client->execute ('ERROR') === null);
 assert ($failed);
 
 echo 'OK';

@@ -94,7 +94,7 @@ interface Client
 	function select ($query, $params = array (), $fallback = null);
 }
 
-interface Database
+interface Engine
 {
 	const CLEAN_OPTIMIZE = 0;
 	const CLEAN_TRUNCATE = 1;
@@ -192,7 +192,7 @@ function _create_client ($scheme, $name, $host, $port, $user, $pass, $options, $
 	}
 }
 
-function _create_database ($scheme, $client)
+function _create_engine ($scheme, $client)
 {
 	$base = dirname (__FILE__);
 
@@ -200,16 +200,16 @@ function _create_database ($scheme, $client)
 	{
 		case 'mysql':
 		case 'mysqli':
-			require_once ($base . '/databases/mysql.php');
+			require_once ($base . '/engines/mysql.php');
 
-			return new Databases\MySQLDatabase ($client);
+			return new Engines\MySQLEngine ($client);
 
 		default:
 			throw new \Exception ('scheme "' . $scheme . '" is not supported');
 	}
 }
 
-function create_database ($url, $callback = null)
+function open ($url, $callback = null)
 {
 	$base = dirname (__FILE__);
 
@@ -241,11 +241,11 @@ function create_database ($url, $callback = null)
 	$scheme = $components['scheme'];
 	$user = isset ($components['user']) ? $components['user'] : null;
 
-	// Create and setup client & database
+	// Create and setup client & engine
 	$client = _create_client ($scheme, $name, $host, $port, $user, $pass, $options, $callback);
-	$database = _create_database ($scheme, $client);
+	$engine = _create_engine ($scheme, $client);
 
-	return $database;
+	return $engine;
 }
 
 ?>

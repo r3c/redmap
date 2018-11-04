@@ -1,8 +1,8 @@
 <?php
 
-namespace RedMap\Databases;
+namespace RedMap\Engines;
 
-class MySQLDatabase implements \RedMap\Database
+class MySQLEngine implements \RedMap\Engine
 {
 	const FILTER_GROUP = '~';
 	const FILTER_LINK = '+';

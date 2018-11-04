@@ -44,14 +44,14 @@ $report = new RedMap\Schema
 	)
 );
 
-$database = sql_connect ();
+$engine = sql_connect ();
 
-sql_import ($database, 'setup/select_start.sql');
+sql_import ($engine, 'setup/select_start.sql');
 
 // Select, 1 table, default 'equal' operator
 sql_compare
 (
-	$database->select ($company, array ('id' => 1), array ('id' => true)),
+	$engine->select ($company, array ('id' => 1), array ('id' => true)),
 	array
 	(
 		array ('id' => '1', 'name' => 'Google', 'ipo' => '2004')
@@ -61,7 +61,7 @@ sql_compare
 // Select, 1 table, default 'is' operator
 sql_compare
 (
-	$database->select ($company, array ('ipo' => null), array ('id' => true)),
+	$engine->select ($company, array ('ipo' => null), array ('id' => true)),
 	array
 	(
 		array ('id' => '4', 'name' => 'Apple', 'ipo' => null)
@@ -71,7 +71,7 @@ sql_compare
 // Select, 1 table, greater or equal operator
 sql_compare
 (
-	$database->select ($company, array ('ipo|ge' => 2000), array ('name' => true)),
+	$engine->select ($company, array ('ipo|ge' => 2000), array ('name' => true)),
 	array
 	(
 		array ('id' => '2', 'name' => 'Facebook', 'ipo' => 2012),
@@ -82,7 +82,7 @@ sql_compare
 // Select, 1 table, greater than operator
 sql_compare
 (
-	$database->select ($company, array ('id|gt' => 3), array ('id' => true)),
+	$engine->select ($company, array ('id|gt' => 3), array ('id' => true)),
 	array
 	(
 		array ('id' => '4', 'name' => 'Apple', 'ipo' => null)
@@ -92,7 +92,7 @@ sql_compare
 // Select, 1 table, lower or equal operator
 sql_compare
 (
-	$database->select ($company, array ('id|le' => 2), array ('id' => true)),
+	$engine->select ($company, array ('id|le' => 2), array ('id' => true)),
 	array
 	(
 		array ('id' => '1', 'name' => 'Google', 'ipo' => 2004),
@@ -103,7 +103,7 @@ sql_compare
 // Select, 1 table, lower than operator
 sql_compare
 (
-	$database->select ($company, array ('ipo|lt' => 2004), array ('id' => true)),
+	$engine->select ($company, array ('ipo|lt' => 2004), array ('id' => true)),
 	array
 	(
 		array ('id' => '3', 'name' => 'Amazon', 'ipo' => 1997)
@@ -113,7 +113,7 @@ sql_compare
 // Select, 1 table, like operator
 sql_compare
 (
-	$database->select ($company, array ('name|like' => 'A%'), array ('id' => true)),
+	$engine->select ($company, array ('name|like' => 'A%'), array ('id' => true)),
 	array
 	(
 		array ('id' => '3', 'name' => 'Amazon', 'ipo' => 1997),
@@ -124,7 +124,7 @@ sql_compare
 // Select, 1 table, match boolean operator
 sql_compare
 (
-	$database->select ($report, array ('summary|mb' => 'com*'), array ('day' => false)),
+	$engine->select ($report, array ('summary|mb' => 'com*'), array ('day' => false)),
 	array
 	(
 		array ('employee' => '1', 'day' => 3, 'summary' => 'Left the company'),
@@ -135,7 +135,7 @@ sql_compare
 // Link with company
 sql_compare
 (
-	$database->select ($employee, array ('+' => array ('company' => null)), array ('id' => true)),
+	$engine->select ($employee, array ('+' => array ('company' => null)), array ('id' => true)),
 	array
 	(
 		array ('id' => '1', 'name' => 'Alice', 'company__id' => '1', 'company__name' => 'Google', 'company__ipo' => 2004),
@@ -150,7 +150,7 @@ sql_compare
 // Filter by id, link with company and manager
 sql_compare
 (
-	$database->select ($employee, array ('id' => 1, '+'  => array ('company' => null, 'manager' => null)), array ('id' => true)),
+	$engine->select ($employee, array ('id' => 1, '+'  => array ('company' => null, 'manager' => null)), array ('id' => true)),
 	array
 	(
 		array ('id' => 1, 'name' => 'Alice', 'company__id' => 1, 'company__name' => 'Google', 'company__ipo' => 2004, 'manager__id' => null, 'manager__name' => null)
@@ -160,7 +160,7 @@ sql_compare
 // Filter by id, link with manager
 sql_compare
 (
-	$database->select ($employee, array ('id' => 2, '+' => array ('manager' => null)), array ('id' => true)),
+	$engine->select ($employee, array ('id' => 2, '+' => array ('manager' => null)), array ('id' => true)),
 	array
 	(
 		array ('id' => 2, 'name' => 'Bob', 'manager__id' => 1, 'manager__name' => 'Alice')
@@ -170,7 +170,7 @@ sql_compare
 // Link with manager, filter by missing manager
 sql_compare
 (
-	$database->select ($employee, array ('+' => array ('manager' => array ('id' => null))), array ('id' => true)),
+	$engine->select ($employee, array ('+' => array ('manager' => array ('id' => null))), array ('id' => true)),
 	array
 	(
 		array ('id' => 1, 'name' => 'Alice', 'manager__id' => null, 'manager__name' => null),
@@ -183,7 +183,7 @@ sql_compare
 // Link with company, filter by company name
 sql_compare
 (
-	$database->select ($employee, array ('+' => array ('company' => array ('name|like' => 'A%'))), array ('id' => true)),
+	$engine->select ($employee, array ('+' => array ('company' => array ('name|like' => 'A%'))), array ('id' => true)),
 	array
 	(
 		array ('id' => 5, 'name' => 'Eve', 'company__id' => 3, 'company__name' => 'Amazon', 'company__ipo' => 1997),
@@ -194,7 +194,7 @@ sql_compare
 // Filter by id, link with manager and company of manager
 sql_compare
 (
-	$database->select ($employee, array ('id|in' => array (1, 2), '+' => array ('manager' => array ('+' => array ('company' => null)))), array ('id' => true)),
+	$engine->select ($employee, array ('id|in' => array (1, 2), '+' => array ('manager' => array ('+' => array ('company' => null)))), array ('id' => true)),
 	array
 	(
 		array ('id' => 1, 'name' => 'Alice', 'manager__id' => null, 'manager__name' => null, 'manager__company__id' => null, 'manager__company__name' => null, 'manager__company__ipo' => null),
@@ -205,7 +205,7 @@ sql_compare
 // Filter by id, link with external report on day 2
 sql_compare
 (
-	$database->select ($employee, array ('id' => 1, '+' => array ('report' => array ('!day' => 2))), array ('id' => true)),
+	$engine->select ($employee, array ('id' => 1, '+' => array ('report' => array ('!day' => 2))), array ('id' => true)),
 	array
 	(
 		array ('id' => 1, 'name' => 'Alice', 'report__employee' => 1, 'report__day' => 2, 'report__summary' => 'Read a few things')
@@ -215,7 +215,7 @@ sql_compare
 // Link with both company and manager, filter only on linked fields
 sql_compare
 (
-	$database->select ($employee, array ('+' => array ('company' => array ('id' => 1), 'manager' => array ('id' => 1))), array ('id' => true)),
+	$engine->select ($employee, array ('+' => array ('company' => array ('id' => 1), 'manager' => array ('id' => 1))), array ('id' => true)),
 	array
 	(
 		array ('id' => '2', 'name' => 'Bob', 'company__id' => '1', 'company__name' => 'Google', 'company__ipo' => 2004, 'manager__id' => '1', 'manager__name' => 'Alice')
@@ -225,7 +225,7 @@ sql_compare
 // Link with company and filter by company name and employee name
 sql_compare
 (
-	$database->select ($employee, array ('+' => array ('company' => null)), array ('+' => array ('company' => array ('name' => true)), 'id' => false)),
+	$engine->select ($employee, array ('+' => array ('company' => null)), array ('+' => array ('company' => array ('name' => true)), 'id' => false)),
 	array
 	(
 		array ('id' => '5', 'name' => 'Eve', 'company__id' => '3', 'company__name' => 'Amazon', 'company__ipo' => 1997),
@@ -237,7 +237,7 @@ sql_compare
 	)
 );
 
-sql_import ($database, 'setup/select_stop.sql');
+sql_import ($engine, 'setup/select_stop.sql');
 
 echo 'OK';
 

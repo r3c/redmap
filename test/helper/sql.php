@@ -22,24 +22,24 @@ function sql_compare ($returned, $expected)
 
 function sql_connect ($callback = null)
 {
-	$database = RedMap\create_database ('mysqli://root@127.0.0.1/redmap?charset=utf-8', $callback ?: function ($error, $query)
+	$engine = RedMap\open ('mysqli://root@127.0.0.1/redmap?charset=utf-8', $callback ?: function ($error, $query)
 	{
 		assert (false, 'Query execution failed: ' . $error);
 	});
 
-	assert ($database->connect (), 'Connection to database');
+	assert ($engine->connect (), 'Connection to database failed');
 
-	return $database;
+	return $engine;
 }
 
-function sql_import ($database, $path)
+function sql_import ($engine, $path)
 {
 	$class = new ReflectionClass ('RedMap\\Clients\\MySQLiClient');
 
 	$property = $class->getProperty ('connection');
 	$property->setAccessible (true);
 
-	$connection = $property->getValue ($database->client);
+	$connection = $property->getValue ($engine->client);
 
 	assert ($connection->multi_query (file_get_contents ($path)), 'Import SQL file "' . $path . '"');
 

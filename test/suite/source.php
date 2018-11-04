@@ -5,12 +5,12 @@ require_once ('helper/sql.php');
 
 function test_source ($source, $select, $expected)
 {
-	global $database;
+	global $engine;
 
-	sql_import ($database, 'setup/source_start.sql');
+	sql_import ($engine, 'setup/source_start.sql');
 	assert ($source () !== null);
 	sql_compare ($select (), $expected);
-	sql_import ($database, 'setup/source_stop.sql');
+	sql_import ($engine, 'setup/source_stop.sql');
 }
 
 $category = new RedMap\Schema
@@ -51,31 +51,31 @@ $stock = new RedMap\Schema
 	)
 );
 
-$database = sql_connect ();
+$engine = sql_connect ();
 
 // Insert
 test_source
 (
-	function () use ($database, $stock, $food)
+	function () use ($engine, $stock, $food)
 	{
-		return $database->source
+		return $engine->source
 		(
 			$stock,
 			array
 			(
-				'id'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
-				'name'		=> array (RedMap\Database::SOURCE_COLUMN, 'name'),
-				'price'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
-				'quantity'	=> array (RedMap\Database::SOURCE_VALUE, 0)
+				'id'		=> array (RedMap\Engine::SOURCE_COLUMN, 'id'),
+				'name'		=> array (RedMap\Engine::SOURCE_COLUMN, 'name'),
+				'price'		=> array (RedMap\Engine::SOURCE_COLUMN, 'id'),
+				'quantity'	=> array (RedMap\Engine::SOURCE_VALUE, 0)
 			),
-			RedMap\Database::INSERT_APPEND,
+			RedMap\Engine::INSERT_APPEND,
 			$food,
 			array ('id|le' => 2)
 		);
 	},
-	function () use ($database, $stock)
+	function () use ($engine, $stock)
 	{
-		return $database->select ($stock, array (), array ('id' => true));
+		return $engine->select ($stock, array (), array ('id' => true));
 	},
 	array
 	(
@@ -89,26 +89,26 @@ test_source
 // Insert, child reference
 test_source
 (
-	function () use ($database, $stock, $food)
+	function () use ($engine, $stock, $food)
 	{
-		return $database->source
+		return $engine->source
 		(
 			$stock,
 			array
 			(
-				'id'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
-				'name'		=> array (RedMap\Database::SOURCE_COLUMN, 'category__name'),
-				'price'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
-				'quantity'	=> array (RedMap\Database::SOURCE_VALUE, 0)
+				'id'		=> array (RedMap\Engine::SOURCE_COLUMN, 'id'),
+				'name'		=> array (RedMap\Engine::SOURCE_COLUMN, 'category__name'),
+				'price'		=> array (RedMap\Engine::SOURCE_COLUMN, 'id'),
+				'quantity'	=> array (RedMap\Engine::SOURCE_VALUE, 0)
 			),
-			RedMap\Database::INSERT_APPEND,
+			RedMap\Engine::INSERT_APPEND,
 			$food,
 			array ('id' => 1, '+' => array ('category' => null)) // FIXME [source-nested-implicit]: no error is raised when "category" is not linked here (and missing from selected columns)
 		);
 	},
-	function () use ($database, $stock)
+	function () use ($engine, $stock)
 	{
-		return $database->select ($stock, array (), array ('id' => true));
+		return $engine->select ($stock, array (), array ('id' => true));
 	},
 	array
 	(
@@ -121,26 +121,26 @@ test_source
 // Replace
 test_source
 (
-	function () use ($database, $stock, $food)
+	function () use ($engine, $stock, $food)
 	{
-		return $database->source
+		return $engine->source
 		(
 			$stock,
 			array
 			(
-				'id'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
-				'name'		=> array (RedMap\Database::SOURCE_COLUMN, 'name'),
-				'price'		=> array (RedMap\Database::SOURCE_VALUE, 0),
-				'quantity'	=> array (RedMap\Database::SOURCE_VALUE, 1),
+				'id'		=> array (RedMap\Engine::SOURCE_COLUMN, 'id'),
+				'name'		=> array (RedMap\Engine::SOURCE_COLUMN, 'name'),
+				'price'		=> array (RedMap\Engine::SOURCE_VALUE, 0),
+				'quantity'	=> array (RedMap\Engine::SOURCE_VALUE, 1),
 			),
-			RedMap\Database::INSERT_REPLACE,
+			RedMap\Engine::INSERT_REPLACE,
 			$food,
 			array ('id|ge' => 3)
 		);
 	},
-	function () use ($database, $stock)
+	function () use ($engine, $stock)
 	{
-		return $database->select ($stock, array (), array ('id' => true));
+		return $engine->select ($stock, array (), array ('id' => true));
 	},
 	array
 	(
@@ -152,26 +152,26 @@ test_source
 // Upsert
 test_source
 (
-	function () use ($database, $stock, $food)
+	function () use ($engine, $stock, $food)
 	{
-		return $database->source
+		return $engine->source
 		(
 			$stock,
 			array
 			(
-				'id'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
-				'name'		=> array (RedMap\Database::SOURCE_COLUMN, 'name'),
-				'price'		=> array (RedMap\Database::SOURCE_VALUE, 3),
-				'quantity'	=> array (RedMap\Database::SOURCE_VALUE, 2),
+				'id'		=> array (RedMap\Engine::SOURCE_COLUMN, 'id'),
+				'name'		=> array (RedMap\Engine::SOURCE_COLUMN, 'name'),
+				'price'		=> array (RedMap\Engine::SOURCE_VALUE, 3),
+				'quantity'	=> array (RedMap\Engine::SOURCE_VALUE, 2),
 			),
-			RedMap\Database::INSERT_UPSERT,
+			RedMap\Engine::INSERT_UPSERT,
 			$food,
 			array ('id|le' => 3)
 		);
 	},
-	function () use ($database, $stock)
+	function () use ($engine, $stock)
 	{
-		return $database->select ($stock, array (), array ('id' => true));
+		return $engine->select ($stock, array (), array ('id' => true));
 	},
 	array
 	(
@@ -185,25 +185,25 @@ test_source
 // Upsert, max
 test_source
 (
-	function () use ($database, $stock, $food)
+	function () use ($engine, $stock, $food)
 	{
-		return $database->source
+		return $engine->source
 		(
 			$stock,
 			array
 			(
-				'id'		=> array (RedMap\Database::SOURCE_COLUMN, 'id'),
-				'name'		=> array (RedMap\Database::SOURCE_COLUMN, 'name'),
-				'price'		=> array (RedMap\Database::SOURCE_VALUE, 3),
-				'quantity'	=> array (RedMap\Database::SOURCE_VALUE, new RedMap\Max (20)),
+				'id'		=> array (RedMap\Engine::SOURCE_COLUMN, 'id'),
+				'name'		=> array (RedMap\Engine::SOURCE_COLUMN, 'name'),
+				'price'		=> array (RedMap\Engine::SOURCE_VALUE, 3),
+				'quantity'	=> array (RedMap\Engine::SOURCE_VALUE, new RedMap\Max (20)),
 			),
-			RedMap\Database::INSERT_UPSERT,
+			RedMap\Engine::INSERT_UPSERT,
 			$food
 		);
 	},
-	function () use ($database, $stock)
+	function () use ($engine, $stock)
 	{
-		return $database->select ($stock, array (), array ('id' => true));
+		return $engine->select ($stock, array (), array ('id' => true));
 	},
 	array
 	(
