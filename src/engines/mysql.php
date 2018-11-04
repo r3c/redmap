@@ -50,7 +50,7 @@ class MySQLEngine implements \RedMap\Engine
 				return $this->client->execute ('TRUNCATE TABLE ' . self::format_name ($schema->table));
 
 			default:
-				throw new \Exception ("invalid mode '$mode'");
+				throw new \RedMap\RuntimeException ("invalid mode '$mode'");
 		}
 	}
 
@@ -132,7 +132,7 @@ class MySQLEngine implements \RedMap\Engine
 					break;
 
 				default:
-					throw new \Exception ("invalid assignment type '$type'");
+					throw new \RedMap\RuntimeException ("invalid assignment type '$type'");
 			}
 		}
 
@@ -407,7 +407,7 @@ class MySQLEngine implements \RedMap\Engine
 				else
 				{
 					if ($children === null || !isset ($children[$parent_name]))
-						throw new \Exception ("relation from $schema->table to $link_schema->table.$foreign_name through link '$name' depends on unspecified value '$parent_name'");
+						throw new \RedMap\RuntimeException ("relation from $schema->table to $link_schema->table.$foreign_name through link '$name' depends on unspecified value '$parent_name'");
 
 					$connect_relation_params[] = $children[$parent_name];
 					$parent_column = self::MACRO_PARAM;
@@ -454,7 +454,7 @@ class MySQLEngine implements \RedMap\Engine
 				list ($link_schema, $link_flags, $link_relations) = $this->get_link ($schema, $name);
 
 				if (!isset ($aliases[$name]))
-					throw new \Exception ("can't order by fields from non-linked schema '$schema->table.$name'");
+					throw new \RedMap\RuntimeException ("can't order by fields from non-linked schema '$schema->table.$name'");
 
 				list ($link_alias, $link_aliases) = $aliases[$name];
 
@@ -528,7 +528,7 @@ class MySQLEngine implements \RedMap\Engine
 			$pattern = '/^[[:blank:]]*' . preg_quote (self::MACRO_SCOPE, '/') . '[[:blank:]]*(?:' . preg_quote (self::SQL_BEGIN, '/') . ')?([0-9A-Za-z_]+)(?:' . preg_quote (self::SQL_END, '/') . ')?[[:blank:]]*$/';
 
 		if (!isset ($schema->fields[$name]))
-			throw new \Exception ("can't assign to unknown field '$schema->table.$name'");
+			throw new \RedMap\RuntimeException ("can't assign to unknown field '$schema->table.$name'");
 
 		$expression = $schema->fields[$name][1];
 
@@ -540,7 +540,7 @@ class MySQLEngine implements \RedMap\Engine
 		if (preg_match ($pattern, $expression, $match))
 			return self::format_name ($match[1]);
 
-		throw new \Exception ("can't assign to read-only field '$schema->table.$name'");
+		throw new \RedMap\RuntimeException ("can't assign to read-only field '$schema->table.$name'");
 	}
 
 	/*
@@ -553,7 +553,7 @@ class MySQLEngine implements \RedMap\Engine
 	private function get_expression ($schema, $name, $source)
 	{
 		if (!isset ($schema->fields[$name]))
-			throw new \Exception ("cannot reference unknown field '$schema->table.$name'");
+			throw new \RedMap\RuntimeException ("cannot reference unknown field '$schema->table.$name'");
 
 		$expression = $schema->fields[$name][1];
 
@@ -572,7 +572,7 @@ class MySQLEngine implements \RedMap\Engine
 	private function get_link ($schema, $name)
 	{
 		if (!isset ($schema->links[$name]))
-			throw new \Exception ("can't link unknown relation '$name' to schema '$schema->table'");
+			throw new \RedMap\RuntimeException ("can't link unknown relation '$name' to schema '$schema->table'");
 
 		$link = $schema->links[$name];
 

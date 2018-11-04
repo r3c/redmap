@@ -2,6 +2,22 @@
 
 namespace RedMap;
 
+class ConfigurationException extends \Exception
+{
+	public function __construct ($value, $message)
+	{
+		parent::__construct ("$message: \"$value\"");
+	}
+}
+
+class RuntimeException extends \Exception
+{
+	public function __construct ($message)
+	{
+		parent::__construct ($message);
+	}
+}
+
 abstract class Value
 {
 	public static function wrap ($value)
@@ -189,7 +205,7 @@ function _create_client ($scheme, $name, $host, $port, $user, $pass, $query, $ca
 			return $client;
 
 		default:
-			throw new \Exception ('unknown scheme "' . $scheme . '" in connection string');
+			throw new ConfigurationException ($scheme, 'unknown scheme in connection string');
 	}
 }
 
@@ -206,7 +222,7 @@ function _create_engine ($scheme, $client)
 			return new Engines\MySQLEngine ($client);
 
 		default:
-			throw new \Exception ('unknown scheme "' . $scheme . '" in connection string');
+			throw new ConfigurationException ($scheme, 'unknown scheme in connection string');
 	}
 }
 
@@ -215,7 +231,7 @@ function _extract ($query, $options)
 	$unknown = array_diff_key ($query, $options);
 
 	if (count ($unknown) !== 0)
-		throw new \Exception ('unknown option(s) in connection string: ' . implode (', ', array_keys ($unknown)));
+		throw new ConfigurationException (implode (', ', array_keys ($unknown)), 'unknown option(s) in connection string');
 
 	foreach ($options as $key => &$value)
 	{
@@ -234,16 +250,16 @@ function open ($url, $callback = null)
 	$components = parse_url ($url);
 
 	if ($components === false)
-		throw new \Exception ('could not parse connection string');
+		throw new ConfigurationException ($url, 'could not parse connection string');
 
 	if (!isset ($components['host']))
-		throw new \Exception ('missing host name in connection string');
+		throw new ConfigurationException ($url, 'missing host name in connection string');
 
 	if (!isset ($components['path']))
-		throw new \Exception ('missing database name in connection string');
+		throw new ConfigurationException ($url, 'missing database name in connection string');
 
 	if (!isset ($components['scheme']))
-		throw new \Exception ('missing scheme in connection string');
+		throw new ConfigurationException ($url, 'missing scheme in connection string');
 
 	if (isset ($components['query']))
 		parse_str ($components['query'], $query);

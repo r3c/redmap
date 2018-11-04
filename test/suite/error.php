@@ -11,7 +11,7 @@ function test_open ($connection, $message)
 
 		assert (false, 'invalid connection string should raise exception');
 	}
-	catch (Exception $exception)
+	catch (RedMap\ConfigurationException $exception)
 	{
 		assert (strpos ($exception->getMessage (), $message) !== false, 'error message must contain "' . $message . '" but was "' . $exception->getMessage () . '"');
 	}
