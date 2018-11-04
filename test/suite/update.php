@@ -8,7 +8,7 @@ function test_update ($update, $select, $expected)
 	global $engine;
 
 	sql_import ($engine, 'setup/update_start.sql');
-	assert ($update () !== null);
+	assert ($update () !== null, 'execution of "update" statement should succeed');
 	sql_compare ($select (), $expected);
 	sql_import ($engine, 'setup/update_stop.sql');
 }

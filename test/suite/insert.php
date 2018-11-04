@@ -8,7 +8,7 @@ function test_insert ($insert, $select, $expected)
 	global $engine;
 
 	sql_import ($engine, 'setup/insert_start.sql');
-	assert ($insert () !== null);
+	assert ($insert () !== null, 'execution of "insert" statement should succeed');
 	sql_compare ($select (), $expected);
 	sql_import ($engine, 'setup/insert_stop.sql');
 }
@@ -37,7 +37,7 @@ $message = new RedMap\Schema
 
 $engine = sql_connect ();
 
-// Insert, append, empty
+// Insert, append, empty (should create entry and populate auto-increment primary key)
 test_insert
 (
 	function () use ($engine, $identity) { return $engine->insert ($identity); },
@@ -45,7 +45,7 @@ test_insert
 	array (array ('id' => 1))
 );
 
-// Insert, append, constants
+// Insert, append, constants (should create entry and populate columns)
 test_insert
 (
 	function () use ($engine, $message) { return $engine->insert ($message, array ('sender' => 3, 'recipient' => 4, 'time' => 500, 'text' => 'Hello, World!')); },

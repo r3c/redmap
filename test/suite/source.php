@@ -8,7 +8,7 @@ function test_source ($source, $select, $expected)
 	global $engine;
 
 	sql_import ($engine, 'setup/source_start.sql');
-	assert ($source () !== null);
+	assert ($source () !== null, 'execution of "source" statement should succeed');
 	sql_compare ($select (), $expected);
 	sql_import ($engine, 'setup/source_stop.sql');
 }

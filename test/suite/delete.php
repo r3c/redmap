@@ -8,7 +8,7 @@ function test_delete ($delete, $select, $expected)
 	global $engine;
 
 	sql_import ($engine, 'setup/delete_start.sql');
-	assert ($delete () !== null);
+	assert ($delete () !== null, 'execution of "delete" statement should succeed');
 	sql_compare ($select (), $expected);
 	sql_import ($engine, 'setup/delete_stop.sql');
 }
@@ -24,7 +24,7 @@ $entry = new RedMap\Schema
 
 $engine = sql_connect ();
 
-// Delete single entry
+// Delete single entry (should preserve other entries)
 test_delete
 (
 	function () use ($engine, $entry)
@@ -37,25 +37,29 @@ test_delete
 	},
 	array
 	(
-		array ('id' => 2)
+		array ('id' => 2),
+		array ('id' => 3)
 	)
 );
 
-// Delete all entries with filter
+// Delete multiple entries with filter (should preserve other entries)
 test_delete
 (
 	function () use ($engine, $entry)
 	{
-		return $engine->delete ($entry, array ('id|ge' => 1));
+		return $engine->delete ($entry, array ('id|ge' => 2));
 	},
 	function () use ($engine, $entry)
 	{
 		return $engine->select ($entry, array (), array ('id' => true));
 	},
-	array ()
+	array
+	(
+		array ('id' => 1)
+	)
 );
 
-// Delete all entries without filter
+// Delete all entries without filter (should preserve auto-increment primary key)
 test_delete
 (
 	function () use ($engine, $entry)
@@ -72,11 +76,11 @@ test_delete
 	},
 	array
 	(
-		array ('id' => 3)
+		array ('id' => 4)
 	)
 );
 
-// Truncate all entries without filter
+// Truncate all entries without filter (should reset auto-increment primary key)
 test_delete
 (
 	function () use ($engine, $entry)

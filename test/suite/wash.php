@@ -20,7 +20,7 @@ foreach (array ('score_memory', 'score_myisam') as $table)
 		)
 	);
 
-	assert ($engine->wash ($score) !== null);
+	assert ($engine->wash ($score) !== null, 'execution of "wash" statement should succeed');
 
 	sql_compare ($engine->select ($score), array (array ('player' => 'me', 'value' => 42)));
 }

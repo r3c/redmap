@@ -29,14 +29,14 @@ $failed = false;
 
 $engine = sql_connect (function ($error, $query) use (&$failed)
 {
-	assert (strpos ($error, 'syntax') !== false);
-	assert (strpos ($query, 'ERROR') !== false);
+	assert (strpos ($error, 'syntax') !== false, 'invalid query should report syntax error');
+	assert (strpos ($query, 'ERROR') !== false, 'invalid query should pass original string to callback');
 
 	$failed = true;
 });
 
-assert ($engine->client->execute ('ERROR') === null);
-assert ($failed);
+assert ($engine->client->execute ('ERROR') === null, 'execution of invalid query should fail');
+assert ($failed, 'execution of invalid query should trigger error callback');
 
 echo 'OK';
 

@@ -6,4 +6,5 @@ CREATE TABLE `entry` (
 
 INSERT INTO `entry` () VALUES
 (),
+(),
 ();

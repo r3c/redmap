@@ -7,7 +7,7 @@ require_once ('helper/sql.php');
 $engine = sql_connect ();
 
 // Cause connection to timeout (auto-reconnect feature should trigger)
-assert ($engine->client->execute ('SET wait_timeout = 1') !== null);
+assert ($engine->client->execute ('SET wait_timeout = 1') !== null, 'should set wait_timeout to 1 second');
 
 sleep (2);
 
