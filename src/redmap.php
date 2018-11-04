@@ -158,7 +158,7 @@ class Schema
 	}
 }
 
-function _create_client ($scheme, $name, $host, $port, $user, $pass, $options, $callback)
+function _create_client ($scheme, $name, $host, $port, $user, $pass, $query, $callback)
 {
 	$base = dirname (__FILE__);
 
@@ -167,9 +167,10 @@ function _create_client ($scheme, $name, $host, $port, $user, $pass, $options, $
 		case 'mysql':
 			require_once ($base . '/clients/mysql.php');
 
+			$options = _extract ($query, array ('charset' => null));
 			$client = new Clients\MySQLClient ($name, $host ?: '127.0.0.1', $port ?: 3306, $user ?: 'root', $pass ?: '', $callback);
 
-			if (isset ($options['charset']))
+			if ($options['charset'] !== null)
 				$client->set_charset ($options['charset']);
 
 			return $client;
@@ -177,18 +178,18 @@ function _create_client ($scheme, $name, $host, $port, $user, $pass, $options, $
 		case 'mysqli':
 			require_once ($base . '/clients/mysqli.php');
 
+			$options = _extract ($query, array ('charset' => null, 'reconnect' => '0'));
 			$client = new Clients\MySQLiClient ($name, $host ?: '127.0.0.1', $port ?: 3306, $user ?: 'root', $pass ?: '', $callback);
 
-			if (isset ($options['charset']))
+			if ($options['charset'] !== null)
 				$client->set_charset ($options['charset']);
 
-			if (isset ($options['reconnect']))
-				$client->set_reconnect (!!$options['reconnect']);
+			$client->set_reconnect ((int)$options['reconnect'] !== 0);
 
 			return $client;
 
 		default:
-			throw new \Exception ('scheme "' . $scheme . '" is not supported');
+			throw new \Exception ('unknown scheme "' . $scheme . '" in connection string');
 	}
 }
 
@@ -205,8 +206,24 @@ function _create_engine ($scheme, $client)
 			return new Engines\MySQLEngine ($client);
 
 		default:
-			throw new \Exception ('scheme "' . $scheme . '" is not supported');
+			throw new \Exception ('unknown scheme "' . $scheme . '" in connection string');
 	}
+}
+
+function _extract ($query, $options)
+{
+	$unknown = array_diff_key ($query, $options);
+
+	if (count ($unknown) !== 0)
+		throw new \Exception ('unknown option(s) in connection string: ' . implode (', ', array_keys ($unknown)));
+
+	foreach ($options as $key => &$value)
+	{
+		if (isset ($query[$key]))
+			$value = $query[$key];
+	}
+
+	return $options;
 }
 
 function open ($url, $callback = null)
@@ -220,18 +237,18 @@ function open ($url, $callback = null)
 		throw new \Exception ('could not parse connection string');
 
 	if (!isset ($components['host']))
-		throw new \Exception ('connection string must specify a host name');
+		throw new \Exception ('missing host name in connection string');
 
 	if (!isset ($components['path']))
-		throw new \Exception ('connection string must specify a database name');
+		throw new \Exception ('missing database name in connection string');
 
 	if (!isset ($components['scheme']))
-		throw new \Exception ('connection string must specify a scheme');
+		throw new \Exception ('missing scheme in connection string');
 
 	if (isset ($components['query']))
-		parse_str ($components['query'], $options);
+		parse_str ($components['query'], $query);
 	else
-		$options = array ();
+		$query = array ();
 
 	// Read components and convert into connection properties
 	$host = $components['host'];
@@ -242,7 +259,7 @@ function open ($url, $callback = null)
 	$user = isset ($components['user']) ? $components['user'] : null;
 
 	// Create and setup client & engine
-	$client = _create_client ($scheme, $name, $host, $port, $user, $pass, $options, $callback);
+	$client = _create_client ($scheme, $name, $host, $port, $user, $pass, $query, $callback);
 	$engine = _create_engine ($scheme, $client);
 
 	return $engine;
