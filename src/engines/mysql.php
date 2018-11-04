@@ -42,6 +42,55 @@ class MySQLEngine implements \RedMap\Engine
 		);
 	}
 
+	public function insert ($schema, $assignments = array (), $mode = self::INSERT_APPEND)
+	{
+		$insert = '';
+		$insert_params = array ();
+
+		$update = '';
+		$update_params = array ();
+
+		foreach ($assignments as $name => $value)
+		{
+			$column = $this->get_assignment ($schema, $name);
+			$value = \RedMap\Value::wrap ($value);
+
+			$insert .= self::SQL_NEXT . $column;
+			$insert_params[] = $value->initial;
+
+			if ($mode === self::INSERT_UPSERT)
+			{
+				$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column, self::MACRO_PARAM);
+				$update_params[] = $value->update;
+			}
+		}
+
+		// Build and execute statement
+		$duplicate = count ($update_params) > 0
+			? ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT))
+			: '';
+
+		$verb = $mode === self::INSERT_REPLACE
+			? 'REPLACE'
+			: 'INSERT';
+
+		return $this->client->insert
+		(
+			$verb . ' INTO ' . self::format_name ($schema->table) .
+			' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
+			' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($insert_params), self::MACRO_PARAM)) . ')' .
+			$duplicate,
+			array_merge ($insert_params, $update_params)
+		);
+	}
+
+	public function select ($schema, $filters = array (), $orders = array (), $count = null, $offset = null)
+	{
+		list ($select, $select_params) = $this->build_select ($schema, $filters, $orders, $count, $offset);
+
+		return $this->client->select ($select, $select_params);
+	}
+
 	public function source ($schema, $assignments, $mode, $origin, $filters = array (), $orders = array (), $count = null, $offset = null)
 	{
 		if (count ($assignments) === 0)
@@ -123,55 +172,6 @@ class MySQLEngine implements \RedMap\Engine
 			$duplicate,
 			array_merge ($source_params, $select_params, $update_params)
 		);
-	}
-
-	public function insert ($schema, $assignments = array (), $mode = self::INSERT_APPEND)
-	{
-		$insert = '';
-		$insert_params = array ();
-
-		$update = '';
-		$update_params = array ();
-
-		foreach ($assignments as $name => $value)
-		{
-			$column = $this->get_assignment ($schema, $name);
-			$value = \RedMap\Value::wrap ($value);
-
-			$insert .= self::SQL_NEXT . $column;
-			$insert_params[] = $value->initial;
-
-			if ($mode === self::INSERT_UPSERT)
-			{
-				$update .= self::SQL_NEXT . $column . ' = ' . $value->build_update ($column, self::MACRO_PARAM);
-				$update_params[] = $value->update;
-			}
-		}
-
-		// Build and execute statement
-		$duplicate = count ($update_params) > 0
-			? ' ON DUPLICATE KEY UPDATE ' . substr ($update, strlen (self::SQL_NEXT))
-			: '';
-
-		$verb = $mode === self::INSERT_REPLACE
-			? 'REPLACE'
-			: 'INSERT';
-
-		return $this->client->insert
-		(
-			$verb . ' INTO ' . self::format_name ($schema->table) .
-			' (' . substr ($insert, strlen (self::SQL_NEXT)) . ')' .
-			' VALUES (' . implode (self::SQL_NEXT, array_fill (0, count ($insert_params), self::MACRO_PARAM)) . ')' .
-			$duplicate,
-			array_merge ($insert_params, $update_params)
-		);
-	}
-
-	public function select ($schema, $filters = array (), $orders = array (), $count = null, $offset = null)
-	{
-		list ($select, $select_params) = $this->build_select ($schema, $filters, $orders, $count, $offset);
-
-		return $this->client->select ($select, $select_params);
 	}
 
 	public function update ($schema, $assignments, $filters)
