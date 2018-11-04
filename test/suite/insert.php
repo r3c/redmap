@@ -8,7 +8,7 @@ function test_insert ($insert, $select, $expected)
 	global $engine;
 
 	sql_import ($engine, 'setup/insert_start.sql');
-	assert ($insert () != null);
+	assert ($insert () !== null);
 	sql_compare ($select (), $expected);
 	sql_import ($engine, 'setup/insert_stop.sql');
 }

@@ -59,8 +59,11 @@ class MySQLEngine implements \RedMap\Engine
 		return $this->client->connect ();
 	}
 
-	public function delete ($schema, $filters = array ())
+	public function delete ($schema, $filters = null)
 	{
+		if ($filters === null)
+			return $this->client->execute ('TRUNCATE TABLE ' . self::format_name ($schema->table));
+
 		$alias = self::format_name ('_0');
 
 		list ($condition, $params) = $this->build_conditions ($schema, $filters, $alias);
