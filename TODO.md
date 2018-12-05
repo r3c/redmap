@@ -4,7 +4,8 @@ RedMap TODO list
 TODO
 ----
 
-- Implement PDO client
+- Define parameter macro in client, not engine
+- Implement new PDO client
 - Replace FIELD_INTERNAL by naming convention e.g. ".name"
 - Fix SQL error when missing explicit link on nested sourced data [source-nested-implicit]
 
