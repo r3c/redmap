@@ -1,7 +1,9 @@
 <?php
 
-require_once('../src/redmap.php');
-require_once('helper/sql.php');
+$base = dirname(__FILE__);
+
+require_once($base . '/../../src/redmap.php');
+require_once($base . '/../helper/sql.php');
 
 // Start
 $engine = sql_connect();

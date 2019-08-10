@@ -1,7 +1,9 @@
 <?php
 
-require_once('../src/redmap.php');
-require_once('helper/sql.php');
+$base = dirname(__FILE__);
+
+require_once($base . '/../../src/redmap.php');
+require_once($base . '/../helper/sql.php');
 
 // Create engine from invalid connection strings
 function test_open($connection, $message)

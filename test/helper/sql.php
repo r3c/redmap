@@ -38,7 +38,7 @@ function sql_import($engine, $path)
 
     $connection = $property->getValue($engine->client);
 
-    assert($connection->multi_query(file_get_contents($path)), 'Import SQL file "' . $path . '"');
+    assert($connection->multi_query(file_get_contents(dirname(__FILE__) . '/../' . $path)), 'Import SQL file "' . $path . '"');
 
     while ($connection->more_results()) {
         $connection->next_result();

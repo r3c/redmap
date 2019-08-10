@@ -1,7 +1,9 @@
 <?php
 
-require_once('../src/redmap.php');
-require_once('helper/sql.php');
+$base = dirname(__FILE__);
+
+require_once($base . '/../../src/redmap.php');
+require_once($base . '/../helper/sql.php');
 
 $company = new RedMap\Schema(
     'company',
@@ -110,6 +112,15 @@ sql_compare(
     array(
         array('employee' => '1', 'day' => 3, 'summary' => 'Left the company'),
         array('employee' => '1', 'day' => 1, 'summary' => 'Joined the company')
+    )
+);
+
+// Select, 1 table, 'or' clause
+sql_compare(
+    $engine->select($company, array('~' => 'or', 'id|le' => 1, 'id|ge' => 4), array('id' => true)),
+    array(
+        array('id' => 1, 'name' => 'Google', 'ipo' => 2004),
+        array('id' => 4, 'name' => 'Apple', 'ipo' => null)
     )
 );
 
