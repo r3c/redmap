@@ -124,6 +124,15 @@ sql_compare(
     )
 );
 
+// Select, 1 table, empty clause
+sql_compare(
+    $engine->select($company, array('id|le' => 2, array('~' => 'or')), array('id' => true)),
+    array(
+        array('id' => 1, 'name' => 'Google', 'ipo' => 2004),
+        array('id' => 2, 'name' => 'Facebook', 'ipo' => 2012)
+    )
+);
+
 // Link with company
 sql_compare(
     $engine->select($employee, array('+' => array('company' => null)), array('id' => true)),

@@ -281,26 +281,19 @@ class MySQLEngine implements \RedMap\Engine
         // Build conditions from given filters
         $condition = '';
         $params = array();
-        $separator = false;
+        $separator = '';
 
         foreach ($filters as $name => $value) {
             if ($name === self::FILTER_GROUP || $name === self::FILTER_LINK) {
                 continue;
             }
 
-            // Append separator after first filter
-            if ($separator) {
-                $condition .= $logical;
-            }
-
-            $separator = true;
-
             // Complex sub-condition group
             if (is_array($value) && is_numeric($name)) {
                 list($group_condition, $group_params) = $this->build_conditions($schema, $value, $source);
 
                 if ($group_condition !== '') {
-                    $condition .= '(' . $group_condition . ')';
+                    $condition .= $separator . '(' . $group_condition . ')';
                     $params = array_merge($params, $group_params);
                 }
             }
@@ -325,9 +318,12 @@ class MySQLEngine implements \RedMap\Engine
                 }
 
                 // Build field condition
-                $condition .= $lhs . $this->get_expression($schema, $name, $source) . $rhs;
+                $condition .= $separator . $lhs . $this->get_expression($schema, $name, $source) . $rhs;
                 $params[] = $value;
             }
+
+            // Configure separator for next filter
+            $separator = $logical;
         }
 
         return array($condition, $params);
