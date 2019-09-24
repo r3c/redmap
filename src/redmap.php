@@ -267,11 +267,11 @@ function open($url, $callback = null)
 
     // Read components and convert into connection properties
     $host = $components['host'];
-    $pass = isset($components['pass']) ? $components['pass'] : null;
+    $pass = isset($components['pass']) ? rawurldecode($components['pass']) : null;
     $name = (string)substr($components['path'], 1);
-    $port = isset($components['port']) ? $components['port'] : null;
+    $port = isset($components['port']) ? (int)$components['port'] : null;
     $scheme = $components['scheme'];
-    $user = isset($components['user']) ? $components['user'] : null;
+    $user = isset($components['user']) ? rawurldecode($components['user']) : null;
 
     // Create and setup client & engine
     $client = _create_client($scheme, $name, $host, $port, $user, $pass, $query, $callback);
