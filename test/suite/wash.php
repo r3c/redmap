@@ -3,7 +3,7 @@
 $base = dirname(__FILE__);
 
 require_once($base . '/../../src/redmap.php');
-require_once($base . '/../helper/sql.php');
+require_once($base . '/../sql.php');
 
 // Start
 $engine = sql_connect();
