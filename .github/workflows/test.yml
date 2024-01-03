@@ -43,8 +43,5 @@ jobs:
         run: sudo apt-get update
       - name: Install packages
         run: sudo apt-get install php${{ matrix.version.php }}-cli php${{ matrix.version.php }}-mysql
-      - name: Enable assertions
-        run: sudo sed -ri 's/^(zend\.assertions)[[:blank:]]*=.*/\1 = 1/' '/etc/php/${{ matrix.version.php }}/cli/php.ini'
-      - run: sudo cat '/etc/php/${{ matrix.version.php }}/cli/php.ini'
       - name: Run test suite
-        run: php test/index.php
+        run: php -d zend.assertions=1 test/index.php
