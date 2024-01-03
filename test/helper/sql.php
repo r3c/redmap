@@ -3,13 +3,13 @@
 function sql_compare($returned, $expected)
 {
     assert($returned !== null, 'Get query failed');
-    assert(count($expected) === count($returned), 'Query returned ' . count($returned) . ' row(s) instead of ' . count($expected));
+    assert(count($expected) === count($returned), 'Query returned ' . count($returned) . ' row(s) instead of ' . count($expected) . ': ' . var_export($returned, true));
 
     for ($i = 0; $i < count($returned); ++$i) {
         $expected_row = isset($expected[$i]) ? $expected[$i] : array();
         $returned_row = $returned[$i];
 
-        assert(count($expected_row) === count($returned_row), 'Row #' . $i . ' has ' . count($returned_row) . ' field(s) instead of ' . count($expected_row));
+        assert(count($expected_row) === count($returned_row), 'Row #' . $i . ' has ' . count($returned_row) . ' field(s) instead of ' . count($expected_row) . ': ' . var_export($returned_row, true));
 
         foreach ($expected_row as $key => $value) {
             assert(array_key_exists($key, $returned_row), 'Row #' . $i . ' is missing field "' . $key . '"');
