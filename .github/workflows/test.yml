@@ -1,0 +1,50 @@
+name: Automated tests
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+  schedule:
+    - cron: '20 4 * * *'
+
+jobs:
+  test:
+    name: Run tests (PHP ${{ matrix.version.php }}, MySQL ${{ matrix.version.mysql }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        version:
+          - mysql: "5.7"
+            php: "5.6"
+          - mysql: "8.0"
+            php: "7.4"
+          - mysql: "8.0"
+            php: "8.1"
+
+    services:
+      mysql:
+        image: mysql:${{ matrix.version.mysql }}
+        ports:
+          - "3306:3306"
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: redmap
+          MYSQL_ROOT_PASSWORD: ""
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install PPA repository
+        run: sudo add-apt-repository ppa:ondrej/php
+      - name: Update package sources
+        run: sudo apt-get update
+      - name: Install packages
+        run: sudo apt-get install php${{ matrix.version.php }}-cli php${{ matrix.version.php }}-mysql
+      - name: Enable assertions
+        run: sudo sed -ri 's/^(zend\.assertions)[[:blank:]]*=.*/\1 = 1/' '/etc/php/${{ matrix.version.php }}/cli/php.ini'
+      - run: sudo cat '/etc/php/${{ matrix.version.php }}/cli/php.ini'
+      - name: Run test suite
+        run: php test/index.php
