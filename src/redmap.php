@@ -20,6 +20,9 @@ class RuntimeException extends \Exception
 
 abstract class Value
 {
+    public $initial;
+    public $update;
+
     public static function wrap($value)
     {
         if ($value instanceof Value) {
@@ -105,10 +108,10 @@ class Min extends Value
 
 interface Client
 {
-    public function connect();
-    public function execute($query, $params = array());
-    public function insert($query, $params = array());
-    public function select($query, $params = array(), $fallback = null);
+    public function connect(): bool;
+    public function execute(string $query, array $parameters = array()): ?int;
+    public function insert(string $query, array $parameters = array()): int|string|null;
+    public function select(string $query, array $parameters = array(), ?array $fallback = null): ?array;
 }
 
 interface Engine
@@ -133,6 +136,12 @@ class Schema
     const FIELD_INTERNAL = 1;
     const LINK_IMPLICIT = 1;
     const LINK_OPTIONAL = 2;
+
+    public $defaults;
+    public $fields;
+    public $links;
+    public $separator;
+    public $table;
 
     public function __construct($table, $fields, $separator = '__', $links = array())
     {
@@ -173,19 +182,8 @@ function _create_client($scheme, $name, $host, $port, $user, $pass, $query, $cal
 
     switch ($scheme) {
         case 'mysql':
-            require_once($base . '/clients/mysql.php');
-
-            $options = _extract($query, array('charset' => null));
-            $client = new Clients\MySQLClient($name, $host ?: '127.0.0.1', $port ?: 3306, $user ?: 'root', $pass ?: '', $callback);
-
-            if ($options['charset'] !== null) {
-                $client->set_charset($options['charset']);
-            }
-
-            return $client;
-
         case 'mysqli':
-            require_once($base . '/clients/mysqli.php');
+            require_once $base . '/clients/mysqli.php';
 
             $options = _extract($query, array('charset' => null, 'reconnect' => '0'));
             $client = new Clients\MySQLiClient($name, $host ?: '127.0.0.1', $port ?: 3306, $user ?: 'root', $pass ?: '', $callback);
@@ -210,7 +208,7 @@ function _create_engine($scheme, $client)
     switch ($scheme) {
         case 'mysql':
         case 'mysqli':
-            require_once($base . '/engines/mysql.php');
+            require_once $base . '/engines/mysql.php';
 
             return new Engines\MySQLEngine($client);
 

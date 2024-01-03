@@ -20,7 +20,9 @@ function sql_compare($returned, $expected)
 
 function sql_connect($callback = null)
 {
-    $engine = RedMap\open('mysqli://root@127.0.0.1/redmap?charset=utf-8', $callback ?: function ($error, $query) {
+    global $option_client;
+
+    $engine = RedMap\open($option_client . '://root@127.0.0.1/redmap?charset=utf-8', $callback ?: function ($error, $query) {
         assert(false, 'Query execution failed: ' . $error);
     });
 

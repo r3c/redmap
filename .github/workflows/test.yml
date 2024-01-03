@@ -12,11 +12,13 @@ on:
 
 jobs:
   test:
-    name: Run tests (PHP ${{ matrix.version.php }}, MySQL ${{ matrix.version.mysql }})
+    name: Run tests (PHP ${{ matrix.version.php }}, MySQL ${{ matrix.version.mysql }}, client ${{ matrix.client }})
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
+        client:
+          - mysql
         version:
           - mysql: "5.7"
             php: "5.6"
@@ -44,4 +46,4 @@ jobs:
       - name: Install packages
         run: sudo apt-get install php${{ matrix.version.php }}-cli php${{ matrix.version.php }}-mysql
       - name: Run test suite
-        run: php -d zend.assertions=1 test/index.php
+        run: php -d zend.assertions=1 test/index.php client=${{ matrix.client }}

@@ -1,19 +1,37 @@
-<?php header('Content-Type: text/plain'); ?>
-RedMap Tests
-============
+<?php
 
-Connect: <?php require('suite/connect.php'); ?>
+header('Content-Type: text/plain');
 
-Delete: <?php require('suite/delete.php'); ?>
+if (isset($argv)) {
+	parse_str(implode('&', array_slice($argv, 1)), $options);
+} else {
+	$options = $_GET;
+}
 
-Error: <?php require('suite/error.php'); ?>
+$option_client = isset($options['client']) ? $options['client'] : 'mysqli';
 
-Insert: <?php require('suite/insert.php'); ?>
+?>
+# RedMap Tests
 
-Select: <?php require('suite/select.php'); ?>
+## Options
 
-Source: <?php require('suite/source.php'); ?>
+- client: <?php echo $option_client; ?>
 
-Update: <?php require('suite/update.php'); ?>
 
-Wash: <?php require('suite/wash.php'); ?>
+## Suites
+
+- connect: <?php require 'suite/connect.php'; ?>
+
+- delete: <?php require 'suite/delete.php'; ?>
+
+- error: <?php require 'suite/error.php'; ?>
+
+- insert: <?php require 'suite/insert.php'; ?>
+
+- select: <?php require 'suite/select.php'; ?>
+
+- source: <?php require 'suite/source.php'; ?>
+
+- update: <?php require 'suite/update.php'; ?>
+
+- wash: <?php require 'suite/wash.php'; ?>
