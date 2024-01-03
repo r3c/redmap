@@ -14,7 +14,7 @@ class MySQLiClient implements \RedMap\Client
     private $server_port;
     private $server_user;
 
-    public function __construct($name, $host, $port, $user, $pass, $callback)
+    public function __construct(string $name, string $host, int $port, string $user, string $pass, ?callable $callback)
     {
         \mysqli_report(MYSQLI_REPORT_OFF);
 
@@ -29,11 +29,13 @@ class MySQLiClient implements \RedMap\Client
         $this->server_port = $port;
     }
 
-    public function connect()
+    public function connect(): bool
     {
         $this->connection = new \mysqli($this->server_host, $this->server_user, $this->server_pass, $this->server_name, $this->server_port);
 
         if ($this->connection->connect_errno !== 0) {
+            $this->error($this->connection->connect_error, null);
+
             return false;
         }
 
@@ -44,9 +46,9 @@ class MySQLiClient implements \RedMap\Client
         return true;
     }
 
-    public function execute($query, $params = array())
+    public function execute(string $query, array $parameters = array()): ?int
     {
-        $result = $this->query($query, $params);
+        $result = $this->query($query, $parameters);
 
         if ($result === false) {
             return null;
@@ -59,9 +61,9 @@ class MySQLiClient implements \RedMap\Client
         return $this->connection->affected_rows >= 0 ? $this->connection->affected_rows : null;
     }
 
-    public function insert($query, $params = array())
+    public function insert(string $query, array $parameters = array()): int|string|null
     {
-        $result = $this->query($query, $params);
+        $result = $this->query($query, $parameters);
 
         if ($result === false) {
             return null;
@@ -70,9 +72,9 @@ class MySQLiClient implements \RedMap\Client
         return $this->connection->insert_id;
     }
 
-    public function select($query, $params = array(), $fallback = null)
+    public function select(string $query, array $parameters = array(), ?array $fallback = null): ?array
     {
-        $result = $this->query($query, $params);
+        $result = $this->query($query, $parameters);
 
         if ($result === false) {
             return $fallback;
@@ -89,14 +91,22 @@ class MySQLiClient implements \RedMap\Client
         return $rows;
     }
 
-    public function set_charset($charset)
+    public function set_charset(string $charset)
     {
         $this->charset = $charset;
     }
 
-    public function set_reconnect($reconnect)
+    public function set_reconnect(bool $reconnect)
     {
         $this->reconnect = $reconnect;
+    }
+
+    private function error(string $message, ?string $query): void
+    {
+        if ($this->callback !== null) {
+            $callback = $this->callback;
+            $callback($message, $query);
+        }
     }
 
     private function escape($value)
@@ -124,36 +134,40 @@ class MySQLiClient implements \RedMap\Client
         }
 
         if (is_float($value)) {
-            return $this->connection->escape_string((double)$value);
+            return $this->connection->escape_string((float)$value);
         }
 
         return '\'' . $this->connection->escape_string((string)$value) . '\'';
     }
 
-    private function query($query, $params)
+    private function query(string $query, array $parameters): mixed
     {
-        for ($offset = 0; ($offset = strpos($query, '?', $offset)) !== false; $offset += strlen($escape)) {
-            $escape = $this->escape(array_shift($params));
+        $offset = 0;
+
+        while (true) {
+            $offset = strpos($query, '?', $offset);
+
+            if ($offset === false) {
+                break;
+            }
+
+            $escape = $this->escape(array_shift($parameters));
             $query = substr($query, 0, $offset) . $escape . substr($query, $offset + 1);
+            $offset += strlen($escape);
         }
 
         for ($reconnect = $this->reconnect; true; $reconnect = false) {
             $result = @$this->connection->query($query);
 
             if ($result !== false) {
-                break;
+                return $result;
             }
 
             if (!$reconnect || $this->connection->errno !== 2006 || !$this->connect()) {
-                if ($this->callback !== null) {
-                    $callback = $this->callback;
-                    $callback($this->connection->error, $query);
-                }
+                $this->error($this->connection->error, $query);
 
-                break;
+                return false;
             }
         }
-
-        return $result;
     }
 }
