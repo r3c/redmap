@@ -123,12 +123,12 @@ interface Engine
     const SOURCE_VALUE = 1;
 
     public function connect();
-    public function delete($schema, $filters = null);
-    public function insert($schema, $assignments = array(), $mode = self::INSERT_APPEND);
-    public function select($schema, $filters = array(), $orders = array(), $count = null, $offset = null);
-    public function source($schema, $assignments, $mode, $origin, $filters = array(), $orders = array(), $count = null, $offset = null);
-    public function update($schema, $assignments, $filters);
-    public function wash($schema);
+    public function delete(Schema $schema, ?array $filters = null);
+    public function insert(Schema $schema, array $assignments = array(), int $mode = self::INSERT_APPEND);
+    public function select(Schema $schema, array $filters = array(), array $orders = array(), ?int $count = null, ?int $offset = null);
+    public function source(Schema $schema, array $assignments, int $mode, Schema $origin, ?array $filters = array(), ?array $orders = array(), ?int $count = null, ?int $offset = null);
+    public function update(Schema $schema, array $assignments, array $filters);
+    public function wash(Schema $schema);
 }
 
 class Schema
@@ -143,7 +143,7 @@ class Schema
     public $separator;
     public $table;
 
-    public function __construct($table, $fields, $separator = '__', $links = array())
+    public function __construct(string $table, array $fields, string $separator = '__', array $links = array())
     {
         $this->defaults = array();
 
@@ -176,7 +176,7 @@ class Schema
     }
 }
 
-function _create_client($scheme, $name, $host, $port, $user, $pass, $query, $callback)
+function _create_client(string $scheme, string $name, ?string $host, ?int $port, ?string $user, ?string $pass, array $query, ?callable $callback)
 {
     $base = dirname(__FILE__);
 
@@ -201,7 +201,7 @@ function _create_client($scheme, $name, $host, $port, $user, $pass, $query, $cal
     }
 }
 
-function _create_engine($scheme, $client)
+function _create_engine(string $scheme, Client $client)
 {
     $base = dirname(__FILE__);
 
@@ -217,7 +217,7 @@ function _create_engine($scheme, $client)
     }
 }
 
-function _extract($query, $options)
+function _extract(array $query, array $options)
 {
     $unknown = array_diff_key($query, $options);
 
@@ -234,10 +234,8 @@ function _extract($query, $options)
     return $options;
 }
 
-function open($url, $callback = null)
+function open(string $url, ?callable $callback = null)
 {
-    $base = dirname(__FILE__);
-
     // Parse query string into components
     $components = parse_url($url);
 
