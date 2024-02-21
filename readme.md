@@ -1,6 +1,6 @@
 # RedMap: RElational Data MAPper
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/r3c/redmap/test.yml?branch=master)](https://github.com/r3c/redmap/actions/workflows/test.yml)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/r3c/redmap/verify.yml?branch=master)](https://github.com/r3c/redmap/actions/workflows/verify.yml)
 [![License](https://img.shields.io/github/license/r3c/redmap.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
