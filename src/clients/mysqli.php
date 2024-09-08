@@ -5,14 +5,14 @@ namespace RedMap\Clients;
 class MySQLiClient implements \RedMap\Client
 {
     private $callback;
-    private $charset;
-    private $connection;
-    private $reconnect;
-    private $server_host;
-    private $server_name;
-    private $server_pass;
-    private $server_port;
-    private $server_user;
+    private ?string $charset;
+    private ?\mysqli $connection;
+    private bool $reconnect;
+    private string $server_host;
+    private string $server_name;
+    private string $server_pass;
+    private int $server_port;
+    private string $server_user;
 
     public function __construct(string $name, string $host, int $port, string $user, string $pass, ?callable $callback)
     {

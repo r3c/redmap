@@ -19,12 +19,12 @@ class MySQLEngine implements \RedMap\Engine
         $this->client = $client;
     }
 
-    public function connect()
+    public function connect(): bool
     {
         return $this->client->connect();
     }
 
-    public function delete($schema, $filters = null)
+    public function delete($schema, $filters = null): ?int
     {
         if ($filters === null) {
             return $this->client->execute('TRUNCATE TABLE ' . self::format_name($schema->table));
@@ -36,13 +36,13 @@ class MySQLEngine implements \RedMap\Engine
 
         return $this->client->execute(
             'DELETE FROM ' . $alias .
-            (' USING ' . self::format_name($schema->table) . ' ' . $alias) .
-            ($condition !== '' ? ' WHERE ' . $condition : ''),
+                (' USING ' . self::format_name($schema->table) . ' ' . $alias) .
+                ($condition !== '' ? ' WHERE ' . $condition : ''),
             $params
         );
     }
 
-    public function insert($schema, $assignments = array(), $mode = self::INSERT_APPEND)
+    public function insert($schema, $assignments = array(), $mode = self::INSERT_APPEND): int|string|null
     {
         $insert = '';
         $insert_params = array();
@@ -74,21 +74,21 @@ class MySQLEngine implements \RedMap\Engine
 
         return $this->client->insert(
             $verb . ' INTO ' . self::format_name($schema->table) .
-            ' (' . substr($insert, strlen(self::SQL_NEXT)) . ')' .
-            ' VALUES (' . implode(self::SQL_NEXT, array_fill(0, count($insert_params), self::MACRO_PARAM)) . ')' .
-            $duplicate,
+                ' (' . substr($insert, strlen(self::SQL_NEXT)) . ')' .
+                ' VALUES (' . implode(self::SQL_NEXT, array_fill(0, count($insert_params), self::MACRO_PARAM)) . ')' .
+                $duplicate,
             array_merge($insert_params, $update_params)
         );
     }
 
-    public function select($schema, $filters = array(), $orders = array(), $count = null, $offset = null)
+    public function select($schema, $filters = array(), $orders = array(), $count = null, $offset = null): ?array
     {
         list($select, $select_params) = $this->build_select($schema, $filters, $orders, $count, $offset);
 
         return $this->client->select($select, $select_params);
     }
 
-    public function source($schema, $assignments, $mode, $origin, $filters = array(), $orders = array(), $count = null, $offset = null)
+    public function source($schema, $assignments, $mode, $origin, $filters = array(), $orders = array(), $count = null, $offset = null): ?int
     {
         if (count($assignments) === 0) {
             return true;
@@ -163,14 +163,14 @@ class MySQLEngine implements \RedMap\Engine
 
         return $this->client->execute(
             $verb . ' INTO ' . self::format_name($schema->table) .
-            ' (' . substr($insert, strlen(self::SQL_NEXT)) . ')' .
-            ' SELECT ' . substr($source, strlen(self::SQL_NEXT)) . ' FROM (' . $select . ') ' . $alias .
-            $duplicate,
+                ' (' . substr($insert, strlen(self::SQL_NEXT)) . ')' .
+                ' SELECT ' . substr($source, strlen(self::SQL_NEXT)) . ' FROM (' . $select . ') ' . $alias .
+                $duplicate,
             array_merge($source_params, $select_params, $update_params)
         );
     }
 
-    public function update($schema, $assignments, $filters)
+    public function update($schema, $assignments, $filters): ?int
     {
         if (count($assignments) === 0) {
             return true;
@@ -199,33 +199,33 @@ class MySQLEngine implements \RedMap\Engine
         // Build and execute statement
         return $this->client->execute(
             'UPDATE ' . self::format_name($schema->table) . ' ' . $current .
-            $relation .
-            ' SET ' . substr($update, strlen(self::SQL_NEXT)) .
-            $condition,
+                $relation .
+                ' SET ' . substr($update, strlen(self::SQL_NEXT)) .
+                $condition,
             array_merge($relation_params, $update_params, $condition_params)
         );
     }
 
-    public function wash($schema)
+    public function wash($schema): bool
     {
         $procedure = 'redmap_' . uniqid();
 
         if ($this->client->execute(
             'CREATE PROCEDURE ' . self::format_name($procedure) . '() ' .
-            'BEGIN ' .
+                'BEGIN ' .
                 'CASE (SELECT ENGINE FROM information_schema.TABLES where TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?) ' .
-                    'WHEN \'MEMORY\' THEN ' .
-                        'ALTER TABLE ' . self::format_name($schema->table) . ' ENGINE=MEMORY; ' .
-                    'ELSE ' .
-                        'OPTIMIZE TABLE ' . self::format_name($schema->table) . '; ' .
+                'WHEN \'MEMORY\' THEN ' .
+                'ALTER TABLE ' . self::format_name($schema->table) . ' ENGINE=MEMORY; ' .
+                'ELSE ' .
+                'OPTIMIZE TABLE ' . self::format_name($schema->table) . '; ' .
                 'END CASE; ' .
-            'END',
+                'END',
             array($schema->table)
         ) === null) {
             return false;
         }
 
-        $success = $this->client->execute('CALL ' . self::format_name($procedure) . '()');
+        $success = $this->client->execute('CALL ' . self::format_name($procedure) . '()') !== null;
         $success = $this->client->execute('DROP PROCEDURE IF EXISTS ' . self::format_name($procedure)) && $success;
 
         return $success;
@@ -253,18 +253,18 @@ class MySQLEngine implements \RedMap\Engine
 
         if (!isset($comparers)) {
             $comparers = array(
-                'eq'	=> array('', ' = ' . self::MACRO_PARAM),
-                'ge'	=> array('', ' >= ' . self::MACRO_PARAM),
-                'gt'	=> array('', ' > ' . self::MACRO_PARAM),
-                'in'	=> array('', ' IN ' . self::MACRO_PARAM),
-                'is'	=> array('', ' IS ' . self::MACRO_PARAM),
-                'le'	=> array('', ' <= ' . self::MACRO_PARAM),
-                'like'	=> array('', ' LIKE ' . self::MACRO_PARAM),
-                'lt'	=> array('', ' < ' . self::MACRO_PARAM),
-                'm'		=> array('MATCH (', ') AGAINST (' . self::MACRO_PARAM . ')'),
-                'mb'	=> array('MATCH (', ') AGAINST (' . self::MACRO_PARAM . ' IN BOOLEAN MODE)'),
-                'ne'	=> array('', ' != ' . self::MACRO_PARAM),
-                'not'	=> array('', ' IS NOT ' . self::MACRO_PARAM)
+                'eq'    => array('', ' = ' . self::MACRO_PARAM),
+                'ge'    => array('', ' >= ' . self::MACRO_PARAM),
+                'gt'    => array('', ' > ' . self::MACRO_PARAM),
+                'in'    => array('', ' IN ' . self::MACRO_PARAM),
+                'is'    => array('', ' IS ' . self::MACRO_PARAM),
+                'le'    => array('', ' <= ' . self::MACRO_PARAM),
+                'like'    => array('', ' LIKE ' . self::MACRO_PARAM),
+                'lt'    => array('', ' < ' . self::MACRO_PARAM),
+                'm'        => array('MATCH (', ') AGAINST (' . self::MACRO_PARAM . ')'),
+                'mb'    => array('MATCH (', ') AGAINST (' . self::MACRO_PARAM . ' IN BOOLEAN MODE)'),
+                'ne'    => array('', ' != ' . self::MACRO_PARAM),
+                'not'    => array('', ' IS NOT ' . self::MACRO_PARAM)
             );
         }
 
@@ -479,8 +479,8 @@ class MySQLEngine implements \RedMap\Engine
         // Build and return statement
         return array(
             'SELECT ' . $this->build_columns($schema, $alias, '') . $select .
-            ' FROM ' . self::format_name($schema->table) . ' ' . $alias .
-            $relation . $condition . $ordering . $pagination,
+                ' FROM ' . self::format_name($schema->table) . ' ' . $alias .
+                $relation . $condition . $ordering . $pagination,
             array_merge($relation_params, $condition_params, $pagination_params)
         );
     }

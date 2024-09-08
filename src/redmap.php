@@ -23,7 +23,7 @@ abstract class Value
     public $initial;
     public $update;
 
-    public static function wrap($value)
+    public static function wrap($value): Value
     {
         if ($value instanceof Value) {
             return $value;
@@ -38,7 +38,7 @@ abstract class Value
         $this->update = $update;
     }
 
-    abstract public function build_update($column, $macro);
+    abstract public function build_update(string $column, string $macro): string;
 }
 
 class Constant extends Value
@@ -48,7 +48,7 @@ class Constant extends Value
         parent::__construct($value, $value);
     }
 
-    public function build_update($column, $macro)
+    public function build_update(string $column, string $macro): string
     {
         return $macro;
     }
@@ -61,7 +61,7 @@ class Coalesce extends Value
         parent::__construct($value, $value);
     }
 
-    public function build_update($column, $macro)
+    public function build_update(string $column, string $macro): string
     {
         return 'COALESCE(' . $column . ', ' . $macro . ')';
     }
@@ -74,7 +74,7 @@ class Increment extends Value
         parent::__construct($insert !== null ? $insert : $delta, $delta);
     }
 
-    public function build_update($column, $macro)
+    public function build_update(string $column, string $macro): string
     {
         return $column . ' + ' . $macro;
     }
@@ -87,7 +87,7 @@ class Max extends Value
         parent::__construct($value, $value);
     }
 
-    public function build_update($column, $macro)
+    public function build_update(string $column, string $macro): string
     {
         return 'GREATEST(' . $column . ', ' . $macro . ')';
     }
@@ -100,7 +100,7 @@ class Min extends Value
         parent::__construct($value, $value);
     }
 
-    public function build_update($column, $macro)
+    public function build_update(string $column, string $macro): string
     {
         return 'LEAST(' . $column . ', ' . $macro . ')';
     }
@@ -122,13 +122,13 @@ interface Engine
     const SOURCE_COLUMN = 0;
     const SOURCE_VALUE = 1;
 
-    public function connect();
-    public function delete(Schema $schema, ?array $filters = null);
-    public function insert(Schema $schema, array $assignments = array(), int $mode = self::INSERT_APPEND);
-    public function select(Schema $schema, array $filters = array(), array $orders = array(), ?int $count = null, ?int $offset = null);
-    public function source(Schema $schema, array $assignments, int $mode, Schema $origin, ?array $filters = array(), ?array $orders = array(), ?int $count = null, ?int $offset = null);
-    public function update(Schema $schema, array $assignments, array $filters);
-    public function wash(Schema $schema);
+    public function connect(): bool;
+    public function delete(Schema $schema, ?array $filters = null): ?int;
+    public function insert(Schema $schema, array $assignments = array(), int $mode = self::INSERT_APPEND): int|string|null;
+    public function select(Schema $schema, array $filters = array(), array $orders = array(), ?int $count = null, ?int $offset = null): ?array;
+    public function source(Schema $schema, array $assignments, int $mode, Schema $origin, ?array $filters = array(), ?array $orders = array(), ?int $count = null, ?int $offset = null): ?int;
+    public function update(Schema $schema, array $assignments, array $filters): ?int;
+    public function wash(Schema $schema): bool;
 }
 
 class Connection
