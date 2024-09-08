@@ -9,7 +9,7 @@ require_once $base . '/../sql.php';
 function test_open($connection, $message)
 {
     try {
-        RedMap\open($connection);
+        RedMap\Connection::open($connection);
 
         assert(false, 'invalid connection string should raise exception');
     } catch (RedMap\ConfigurationException $exception) {

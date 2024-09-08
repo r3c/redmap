@@ -131,6 +131,51 @@ interface Engine
     public function wash(Schema $schema);
 }
 
+class Connection
+{
+    public static function open(string $url, ?callable $callback = null): Engine
+    {
+        // Parse query string into components
+        $components = parse_url($url);
+
+        if ($components === false) {
+            throw new ConfigurationException($url, 'could not parse connection string');
+        }
+
+        if (!isset($components['host'])) {
+            throw new ConfigurationException($url, 'missing host name in connection string');
+        }
+
+        if (!isset($components['path'])) {
+            throw new ConfigurationException($url, 'missing database name in connection string');
+        }
+
+        if (!isset($components['scheme'])) {
+            throw new ConfigurationException($url, 'missing scheme in connection string');
+        }
+
+        if (isset($components['query'])) {
+            parse_str($components['query'], $query);
+        } else {
+            $query = array();
+        }
+
+        // Read components and convert into connection properties
+        $host = $components['host'];
+        $pass = isset($components['pass']) ? rawurldecode($components['pass']) : null;
+        $name = (string)substr($components['path'], 1);
+        $port = isset($components['port']) ? (int)$components['port'] : null;
+        $scheme = $components['scheme'];
+        $user = isset($components['user']) ? rawurldecode($components['user']) : null;
+
+        // Create and setup client & engine
+        $client = _create_client($scheme, $name, $host, $port, $user, $pass, $query, $callback);
+        $engine = _create_engine($scheme, $client);
+
+        return $engine;
+    }
+}
+
 class Schema
 {
     const FIELD_INTERNAL = 1;
@@ -176,7 +221,7 @@ class Schema
     }
 }
 
-function _create_client(string $scheme, string $name, ?string $host, ?int $port, ?string $user, ?string $pass, array $query, ?callable $callback)
+function _create_client(string $scheme, string $name, ?string $host, ?int $port, ?string $user, ?string $pass, array $query, ?callable $callback): Client
 {
     $base = dirname(__FILE__);
 
@@ -201,7 +246,7 @@ function _create_client(string $scheme, string $name, ?string $host, ?int $port,
     }
 }
 
-function _create_engine(string $scheme, Client $client)
+function _create_engine(string $scheme, Client $client): Engine
 {
     $base = dirname(__FILE__);
 
@@ -232,46 +277,4 @@ function _extract(array $query, array $options)
     }
 
     return $options;
-}
-
-function open(string $url, ?callable $callback = null)
-{
-    // Parse query string into components
-    $components = parse_url($url);
-
-    if ($components === false) {
-        throw new ConfigurationException($url, 'could not parse connection string');
-    }
-
-    if (!isset($components['host'])) {
-        throw new ConfigurationException($url, 'missing host name in connection string');
-    }
-
-    if (!isset($components['path'])) {
-        throw new ConfigurationException($url, 'missing database name in connection string');
-    }
-
-    if (!isset($components['scheme'])) {
-        throw new ConfigurationException($url, 'missing scheme in connection string');
-    }
-
-    if (isset($components['query'])) {
-        parse_str($components['query'], $query);
-    } else {
-        $query = array();
-    }
-
-    // Read components and convert into connection properties
-    $host = $components['host'];
-    $pass = isset($components['pass']) ? rawurldecode($components['pass']) : null;
-    $name = (string)substr($components['path'], 1);
-    $port = isset($components['port']) ? (int)$components['port'] : null;
-    $scheme = $components['scheme'];
-    $user = isset($components['user']) ? rawurldecode($components['user']) : null;
-
-    // Create and setup client & engine
-    $client = _create_client($scheme, $name, $host, $port, $user, $pass, $query, $callback);
-    $engine = _create_engine($scheme, $client);
-
-    return $engine;
 }
