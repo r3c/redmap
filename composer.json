@@ -5,8 +5,7 @@
   "license": "MIT",
   "autoload": {
     "classmap": [
-      "src/",
-      "src/*/"
+      "src/"
     ]
   },
   "authors": [
