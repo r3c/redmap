@@ -1,0 +1,19 @@
+{
+  "name": "r3c/redmap",
+  "description": "Relational Data Mapper",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "classmap": [
+      "src/",
+      "src/*/"
+    ]
+  },
+  "authors": [
+    {
+      "name": "Rémi Caput",
+      "email": "v.github.com+redmap@mirari.fr"
+    }
+  ],
+  "require": {}
+}
