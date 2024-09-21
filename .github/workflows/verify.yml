@@ -20,7 +20,7 @@ jobs:
       - uses: firehed/lint-php-action@v1
 
   test:
-    name: Run tests (PHP ${{ matrix.version.php }}, MySQL ${{ matrix.version.mysql }}, client ${{ matrix.client }})
+    name: Test with PHP ${{ matrix.version.php }}, MySQL ${{ matrix.version.mysql }}, client ${{ matrix.client }}
     runs-on: ubuntu-latest
 
     strategy:
