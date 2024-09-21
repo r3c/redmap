@@ -11,6 +11,14 @@ on:
     - cron: '20 4 * * *'
 
 jobs:
+  lint:
+    name: Run PHP linter validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: firehed/lint-php-action@v1
+
   test:
     name: Run tests (PHP ${{ matrix.version.php }}, MySQL ${{ matrix.version.mysql }}, client ${{ matrix.client }})
     runs-on: ubuntu-latest
