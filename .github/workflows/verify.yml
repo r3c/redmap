@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: firehed/lint-php-action@v1
 
   test:
@@ -46,7 +46,7 @@ jobs:
           MYSQL_ROOT_PASSWORD: ""
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install PPA repository
         run: sudo add-apt-repository ppa:ondrej/php
       - name: Update package sources
