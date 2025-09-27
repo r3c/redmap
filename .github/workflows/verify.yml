@@ -55,3 +55,14 @@ jobs:
         run: sudo apt-get install php${{ matrix.version.php }}-cli php${{ matrix.version.php }}-mysql
       - name: Run test suite
         run: php -d zend.assertions=1 test/index.php client=${{ matrix.client }}
+
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+
+    needs:
+      - lint
+      - test
+
+    steps:
+      - run: true
