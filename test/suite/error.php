@@ -26,14 +26,16 @@ test_open('mysql://localhost/name?unknown=1', 'unknown option(s)');
 // Execute invalid query
 $failed = false;
 
-$engine = sql_connect(function ($error, $query) use (&$failed) {
-    assert(strpos($error, 'syntax') !== false, 'invalid query should report syntax error');
-    assert(strpos($query, 'ERROR') !== false, 'invalid query should pass original string to callback');
+$engine = sql_connect(function ($title, $message) use (&$failed) {
+    assert($title === 'Query error', 'invalid query should raise error');
+    assert(strpos($message, 'syntax') !== false, 'invalid query should report syntax error');
+    assert(strpos($message, 'ERROR') !== false, 'invalid query should include snippet in message');
+    assert(strpos($message, 'SELECT 1') === false, 'invalid query should not include full query in message');
 
     $failed = true;
 });
 
-assert($engine->client->execute('ERROR') === null, 'execution of invalid query should fail');
+assert($engine->client->execute('SELECT 1 WHERE THIS IS AN ERROR') === null, 'execution of invalid query should fail');
 assert($failed, 'execution of invalid query should trigger error callback');
 
 echo 'OK';
