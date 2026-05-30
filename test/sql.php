@@ -36,7 +36,6 @@ function sql_import($engine, $path)
     $class = new ReflectionClass('RedMap\\Clients\\MySQLiClient');
 
     $property = $class->getProperty('connection');
-    $property->setAccessible(true);
 
     $connection = $property->getValue($engine->client);
 

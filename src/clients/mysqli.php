@@ -34,7 +34,7 @@ class MySQLiClient implements \RedMap\Client
         $this->connection = new \mysqli($this->server_host, $this->server_user, $this->server_pass, $this->server_name, $this->server_port);
 
         if ($this->connection->connect_errno !== 0) {
-            $this->error($this->connection->connect_error, null);
+            $this->error('Connection error', $this->connection->connect_error);
 
             return false;
         }
@@ -101,11 +101,11 @@ class MySQLiClient implements \RedMap\Client
         $this->reconnect = $reconnect;
     }
 
-    private function error(string $message, ?string $query): void
+    private function error(string $title, ?string $message): void
     {
         if ($this->callback !== null) {
             $callback = $this->callback;
-            $callback($message, $query);
+            $callback($title, $message);
         }
     }
 
@@ -164,7 +164,7 @@ class MySQLiClient implements \RedMap\Client
             }
 
             if (!$reconnect || $this->connection->errno !== 2006 || !$this->connect()) {
-                $this->error($this->connection->error, $query);
+                $this->error('Query error', $this->connection->error);
 
                 return false;
             }
