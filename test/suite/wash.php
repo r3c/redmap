@@ -14,8 +14,8 @@ foreach (array('score_memory', 'score_myisam') as $table) {
     $score = new RedMap\Schema(
         $table,
         array(
-            'player'    => null,
-            'value'        => null
+            'player' => null,
+            'value' => null
         )
     );
 

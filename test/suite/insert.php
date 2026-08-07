@@ -18,18 +18,18 @@ function test_insert($insert, $select, $expected)
 $identity = new RedMap\Schema(
     'identity',
     array(
-        'id'	=> null
+        'id' => null
     )
 );
 
 $message = new RedMap\Schema(
     'message',
     array(
-        'id'		=> null,
-        'sender'	=> null,
-        'recipient'	=> null,
-        'text'		=> null,
-        'time'		=> null
+        'id' => null,
+        'sender' => null,
+        'recipient' => null,
+        'text' => null,
+        'time' => null
     )
 );
 

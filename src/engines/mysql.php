@@ -254,18 +254,18 @@ class MySQLEngine implements \RedMap\Engine
 
         if (!isset($comparers)) {
             $comparers = array(
-                'eq'    => array('', ' = ' . self::MACRO_PARAM),
-                'ge'    => array('', ' >= ' . self::MACRO_PARAM),
-                'gt'    => array('', ' > ' . self::MACRO_PARAM),
-                'in'    => array('', ' IN ' . self::MACRO_PARAM),
-                'is'    => array('', ' IS ' . self::MACRO_PARAM),
-                'le'    => array('', ' <= ' . self::MACRO_PARAM),
-                'like'    => array('', ' LIKE ' . self::MACRO_PARAM),
-                'lt'    => array('', ' < ' . self::MACRO_PARAM),
-                'm'        => array('MATCH (', ') AGAINST (' . self::MACRO_PARAM . ')'),
-                'mb'    => array('MATCH (', ') AGAINST (' . self::MACRO_PARAM . ' IN BOOLEAN MODE)'),
-                'ne'    => array('', ' != ' . self::MACRO_PARAM),
-                'not'    => array('', ' IS NOT ' . self::MACRO_PARAM)
+                'eq' => array('', ' = ' . self::MACRO_PARAM),
+                'ge' => array('', ' >= ' . self::MACRO_PARAM),
+                'gt' => array('', ' > ' . self::MACRO_PARAM),
+                'in' => array('', ' IN ' . self::MACRO_PARAM),
+                'is' => array('', ' IS ' . self::MACRO_PARAM),
+                'le' => array('', ' <= ' . self::MACRO_PARAM),
+                'like' => array('', ' LIKE ' . self::MACRO_PARAM),
+                'lt' => array('', ' < ' . self::MACRO_PARAM),
+                'm' => array('MATCH (', ') AGAINST (' . self::MACRO_PARAM . ')'),
+                'mb' => array('MATCH (', ') AGAINST (' . self::MACRO_PARAM . ' IN BOOLEAN MODE)'),
+                'ne' => array('', ' != ' . self::MACRO_PARAM),
+                'not' => array('', ' IS NOT ' . self::MACRO_PARAM)
             );
         }
 
@@ -488,9 +488,9 @@ class MySQLEngine implements \RedMap\Engine
 
     /*
     ** Get assignable column from given field name.
-    ** $schema:	source schema
-    ** $name:	field name
-    ** return:	(SQL fragment, true if field is primary)
+    ** $schema: source schema
+    ** $name: field name
+    ** return: (SQL fragment, true if field is primary)
     */
     private function get_assignment($schema, $name)
     {
@@ -521,10 +521,10 @@ class MySQLEngine implements \RedMap\Engine
 
     /*
     ** Get selectable expression from given field name.
-    ** $schema:	source schema
-    ** $name:	field name
-    ** $source:	source table alias
-    ** return:	SQL fragment
+    ** $schema: source schema
+    ** $name: field name
+    ** $source: source table alias
+    ** return: SQL fragment
     */
     private function get_expression($schema, $name, $source)
     {
@@ -543,9 +543,9 @@ class MySQLEngine implements \RedMap\Engine
 
     /*
     ** Get linked schema by name.
-    ** $schema:	source schema
-    ** $name:	link name
-    ** return:	(schema, flags, relations)
+    ** $schema: source schema
+    ** $name: link name
+    ** return: (schema, flags, relations)
     */
     private function get_link($schema, $name)
     {

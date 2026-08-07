@@ -18,31 +18,31 @@ function test_source($source, $select, $expected)
 $category = new RedMap\Schema(
     'category',
     array(
-        'id'	=> null,
-        'name'	=> null
+        'id' => null,
+        'name' => null
     )
 );
 
 $food = new RedMap\Schema(
     'food',
     array(
-        'category'	=> null,
-        'id'		=> null,
-        'name'		=> null
+        'category' => null,
+        'id' => null,
+        'name' => null
     ),
     '__',
     array(
-        'category'	=> array($category, 0, array('category' => 'id'))
+        'category' => array($category, 0, array('category' => 'id'))
     )
 );
 
 $stock = new RedMap\Schema(
     'stock',
     array(
-        'id'		=> null,
-        'name'		=> null,
-        'price'		=> null,
-        'quantity'	=> null
+        'id' => null,
+        'name' => null,
+        'price' => null,
+        'quantity' => null
     )
 );
 
@@ -54,10 +54,10 @@ test_source(
         return $engine->source(
             $stock,
             array(
-                'id'		=> array(RedMap\Engine::SOURCE_COLUMN, 'id'),
-                'name'		=> array(RedMap\Engine::SOURCE_COLUMN, 'name'),
-                'price'		=> array(RedMap\Engine::SOURCE_COLUMN, 'id'),
-                'quantity'	=> array(RedMap\Engine::SOURCE_VALUE, 0)
+                'id' => array(RedMap\Engine::SOURCE_COLUMN, 'id'),
+                'name' => array(RedMap\Engine::SOURCE_COLUMN, 'name'),
+                'price' => array(RedMap\Engine::SOURCE_COLUMN, 'id'),
+                'quantity' => array(RedMap\Engine::SOURCE_VALUE, 0)
             ),
             RedMap\Engine::INSERT_APPEND,
             $food,
@@ -81,10 +81,10 @@ test_source(
         return $engine->source(
             $stock,
             array(
-                'id'		=> array(RedMap\Engine::SOURCE_COLUMN, 'id'),
-                'name'		=> array(RedMap\Engine::SOURCE_COLUMN, 'category__name'),
-                'price'		=> array(RedMap\Engine::SOURCE_COLUMN, 'id'),
-                'quantity'	=> array(RedMap\Engine::SOURCE_VALUE, 0)
+                'id' => array(RedMap\Engine::SOURCE_COLUMN, 'id'),
+                'name' => array(RedMap\Engine::SOURCE_COLUMN, 'category__name'),
+                'price' => array(RedMap\Engine::SOURCE_COLUMN, 'id'),
+                'quantity' => array(RedMap\Engine::SOURCE_VALUE, 0)
             ),
             RedMap\Engine::INSERT_APPEND,
             $food,
@@ -107,10 +107,10 @@ test_source(
         return $engine->source(
             $stock,
             array(
-                'id'		=> array(RedMap\Engine::SOURCE_COLUMN, 'id'),
-                'name'		=> array(RedMap\Engine::SOURCE_COLUMN, 'name'),
-                'price'		=> array(RedMap\Engine::SOURCE_VALUE, 0),
-                'quantity'	=> array(RedMap\Engine::SOURCE_VALUE, 1),
+                'id' => array(RedMap\Engine::SOURCE_COLUMN, 'id'),
+                'name' => array(RedMap\Engine::SOURCE_COLUMN, 'name'),
+                'price' => array(RedMap\Engine::SOURCE_VALUE, 0),
+                'quantity' => array(RedMap\Engine::SOURCE_VALUE, 1),
             ),
             RedMap\Engine::INSERT_REPLACE,
             $food,
@@ -132,10 +132,10 @@ test_source(
         return $engine->source(
             $stock,
             array(
-                'id'		=> array(RedMap\Engine::SOURCE_COLUMN, 'id'),
-                'name'		=> array(RedMap\Engine::SOURCE_COLUMN, 'name'),
-                'price'		=> array(RedMap\Engine::SOURCE_VALUE, 3),
-                'quantity'	=> array(RedMap\Engine::SOURCE_VALUE, 2),
+                'id' => array(RedMap\Engine::SOURCE_COLUMN, 'id'),
+                'name' => array(RedMap\Engine::SOURCE_COLUMN, 'name'),
+                'price' => array(RedMap\Engine::SOURCE_VALUE, 3),
+                'quantity' => array(RedMap\Engine::SOURCE_VALUE, 2),
             ),
             RedMap\Engine::INSERT_UPSERT,
             $food,
@@ -159,10 +159,10 @@ test_source(
         return $engine->source(
             $stock,
             array(
-                'id'		=> array(RedMap\Engine::SOURCE_COLUMN, 'id'),
-                'name'		=> array(RedMap\Engine::SOURCE_COLUMN, 'name'),
-                'price'		=> array(RedMap\Engine::SOURCE_VALUE, 3),
-                'quantity'	=> array(RedMap\Engine::SOURCE_VALUE, new RedMap\Max(20)),
+                'id' => array(RedMap\Engine::SOURCE_COLUMN, 'id'),
+                'name' => array(RedMap\Engine::SOURCE_COLUMN, 'name'),
+                'price' => array(RedMap\Engine::SOURCE_VALUE, 3),
+                'quantity' => array(RedMap\Engine::SOURCE_VALUE, new RedMap\Max(20)),
             ),
             RedMap\Engine::INSERT_UPSERT,
             $food
