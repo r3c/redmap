@@ -208,27 +208,28 @@ class MySQLEngine implements \RedMap\Engine
 
     public function wash($schema): bool
     {
-        $procedure = 'redmap_' . uniqid();
-
-        if ($this->client->execute(
-            'CREATE PROCEDURE ' . self::format_name($procedure) . '() ' .
-                'BEGIN ' .
-                'CASE (SELECT ENGINE FROM information_schema.TABLES where TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?) ' .
-                'WHEN \'MEMORY\' THEN ' .
-                'ALTER TABLE ' . self::format_name($schema->table) . ' ENGINE=MEMORY; ' .
-                'ELSE ' .
-                'OPTIMIZE TABLE ' . self::format_name($schema->table) . '; ' .
-                'END CASE; ' .
-                'END',
+        $rows = $this->client->select(
+            'SELECT ENGINE FROM information_schema.TABLES where TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
             array($schema->table)
-        ) === null) {
-            return false;
+        );
+
+        switch (count($rows) > 0 ? $rows[0]['ENGINE'] : '') {
+            case 'MEMORY':
+                $query = 'ALTER TABLE ' . self::format_name($schema->table) . ' ENGINE=MEMORY';
+
+                break;
+
+            case 'MyISAM':
+            case 'InnoDB':
+                $query = 'OPTIMIZE TABLE ' . self::format_name($schema->table);
+
+                break;
+
+            default:
+                return false;
         }
 
-        $success = $this->client->execute('CALL ' . self::format_name($procedure) . '()') !== null;
-        $success = $this->client->execute('DROP PROCEDURE IF EXISTS ' . self::format_name($procedure)) && $success;
-
-        return $success;
+        return $this->client->execute($query) !== null;
     }
 
     private function build_columns($schema, $source, $namespace)
