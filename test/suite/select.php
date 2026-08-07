@@ -8,27 +8,27 @@ require_once $base . '/../sql.php';
 $company = new RedMap\Schema(
     'company',
     array(
-        'id'	=> null,
-        'name'	=> 'company_name',
-        'ipo'	=> '@ipo_year'
+        'id' => null,
+        'name' => 'company_name',
+        'ipo' => '@ipo_year'
     )
 );
 
 $employee = new RedMap\Schema(
     'employee',
     array(
-        'company'	=> array(RedMap\Schema::FIELD_INTERNAL),
-        'id'		=> null,
-        'manager'	=> array(RedMap\Schema::FIELD_INTERNAL),
-        'name'		=> null
+        'company' => array(RedMap\Schema::FIELD_INTERNAL),
+        'id' => null,
+        'manager' => array(RedMap\Schema::FIELD_INTERNAL),
+        'name' => null
     ),
     '__',
     array(
-        'company'	=> array($company, 0, array('company' => 'id')),
-        'manager'	=> array(function () {
+        'company' => array($company, 0, array('company' => 'id')),
+        'manager' => array(function () {
             return $GLOBALS['employee'];
         }, RedMap\Schema::LINK_OPTIONAL, array('manager' => 'id')),
-        'report'	=> array(function () {
+        'report' => array(function () {
             return $GLOBALS['report'];
         }, RedMap\Schema::LINK_OPTIONAL, array('id' => 'employee', '!day' => 'day'))
     )
@@ -37,9 +37,9 @@ $employee = new RedMap\Schema(
 $report = new RedMap\Schema(
     'report',
     array(
-        'employee'	=> null,
-        'day'		=> null,
-        'summary'	=> null
+        'employee' => null,
+        'day' => null,
+        'summary' => null
     )
 );
 
@@ -148,7 +148,7 @@ sql_compare(
 
 // Filter by id, link with company and manager
 sql_compare(
-    $engine->select($employee, array('id' => 1, '+'  => array('company' => null, 'manager' => null)), array('id' => true)),
+    $engine->select($employee, array('id' => 1, '+' => array('company' => null, 'manager' => null)), array('id' => true)),
     array(
         array('id' => 1, 'name' => 'Alice', 'company__id' => 1, 'company__name' => 'Google', 'company__ipo' => 2004, 'manager__id' => null, 'manager__name' => null)
     )

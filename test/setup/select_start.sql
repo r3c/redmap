@@ -4,7 +4,7 @@ CREATE TABLE `company` (
   `company_name` varchar(64) NOT NULL,
   `ipo_year` int(10) unsigned NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `company` (`id`, `company_name`, `ipo_year`) VALUES
 (1, 'Google', 2004),
@@ -18,7 +18,7 @@ CREATE TABLE `employee` (
   `company` int(10) unsigned NOT NULL,
   `manager` int(10) unsigned NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `employee` (`id`, `name`, `company`, `manager`) VALUES
 (1, 'Alice', 1, 0),

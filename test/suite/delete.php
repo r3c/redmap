@@ -18,7 +18,7 @@ function test_delete($delete, $select, $expected)
 $entry = new RedMap\Schema(
     'entry',
     array(
-        'id'	=> null
+        'id' => null
     )
 );
 

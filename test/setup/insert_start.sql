@@ -2,7 +2,7 @@
 CREATE TABLE `identity` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `message` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
@@ -11,7 +11,7 @@ CREATE TABLE `message` (
   `text` varchar(200) NOT NULL DEFAULT '',
   `time` int(10) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `message` (`id`, `sender`, `recipient`, `text`, `time`) VALUES
 (1, 1, 2, 'Are you Ken?', 500),

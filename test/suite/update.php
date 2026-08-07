@@ -18,21 +18,21 @@ function test_update($update, $select, $expected)
 $player = new RedMap\Schema(
     'player',
     array(
-        'id'	=> null,
-        'name'	=> null
+        'id' => null,
+        'name' => null
     )
 );
 
 $log = new RedMap\Schema(
     'log',
     array(
-        'id'		=> null,
-        'player'	=> array(RedMap\Schema::FIELD_INTERNAL),
-        'score'		=> null
+        'id' => null,
+        'player' => array(RedMap\Schema::FIELD_INTERNAL),
+        'score' => null
     ),
     '__',
     array(
-        'player'	=> array($player, 0, array('player' => 'id'))
+        'player' => array($player, 0, array('player' => 'id'))
     )
 );
 
