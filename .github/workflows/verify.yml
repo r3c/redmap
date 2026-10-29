@@ -28,12 +28,12 @@ jobs:
         client:
           - mysql
         version:
-          - mysql: "5.7"
-            php: "5.6"
-          - mysql: "8.0"
-            php: "7.4"
           - mysql: "8.0"
             php: "8.1"
+          - mysql: "8.0"
+            php: "8.3"
+          - mysql: "8.0"
+            php: "8.5"
 
     services:
       mysql:
@@ -47,12 +47,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-      - name: Install PPA repository
-        run: sudo add-apt-repository ppa:ondrej/php
-      - name: Update package sources
-        run: sudo apt-get update
-      - name: Install packages
-        run: sudo apt-get install php${{ matrix.version.php }}-cli php${{ matrix.version.php }}-mysql
+      - name: Set up PHP ${{ matrix.version.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          extensions: mysql
+          ini-values: zend.assertions=1
+          php-version: ${{ matrix.version.php }}
+      - name: Wait for MySQL
+        run: |
+          while ! mysqladmin ping --host=127.0.0.1 --password=$MYSQL_ROOT_PASSWORD --silent; do
+            sleep 1
+          done
       - name: Run test suite
         run: php -d zend.assertions=1 test/index.php client=${{ matrix.client }}
 
