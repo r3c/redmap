@@ -9,6 +9,8 @@ if (isset($argv)) {
 }
 
 $option_client = isset($options['client']) ? $options['client'] : 'mysqli';
+$option_password = isset($options['password']) ? $options['password'] : '';
+$option_user = isset($options['user']) ? $options['user'] : 'root';
 
 ?>
 # RedMap Tests
@@ -16,6 +18,8 @@ $option_client = isset($options['client']) ? $options['client'] : 'mysqli';
 ## Options
 
 - client: <?php echo $option_client; ?>
+- password: ***
+- user: <?php echo $option_user; ?>
 
 
 ## Suites
