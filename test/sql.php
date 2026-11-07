@@ -21,8 +21,10 @@ function sql_compare($returned, $expected)
 function sql_connect($callback = null)
 {
     global $option_client;
+    global $option_password;
+    global $option_user;
 
-    $engine = RedMap\Connection::open($option_client . '://root@127.0.0.1/redmap?charset=utf-8', $callback ?: function ($title, $message) {
+    $engine = RedMap\Connection::open("$option_client://$option_user:$option_password@127.0.0.1/redmap?charset=utf-8", $callback ?: function ($title, $message) {
         assert(false, "$title: $message");
     });
 

@@ -41,9 +41,8 @@ jobs:
         ports:
           - "3306:3306"
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
           MYSQL_DATABASE: redmap
-          MYSQL_ROOT_PASSWORD: ""
+          MYSQL_ROOT_PASSWORD: redmap
         options: --health-cmd "mysqladmin ping" --health-interval 1s --health-timeout 5s --health-retries 10
 
     steps:
@@ -55,7 +54,7 @@ jobs:
           ini-values: zend.assertions=1
           php-version: ${{ matrix.version.php }}
       - name: Run test suite
-        run: php -d zend.assertions=1 test/index.php client=${{ matrix.client }}
+        run: php -d zend.assertions=1 test/index.php client=${{ matrix.client }}&password=redmap
 
   validate:
     name: Validate
