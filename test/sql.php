@@ -22,8 +22,8 @@ function sql_connect($callback = null)
 {
     global $option_client;
 
-    $engine = RedMap\Connection::open($option_client . '://root@127.0.0.1/redmap?charset=utf-8', $callback ?: function ($error, $query) {
-        assert(false, 'Query execution failed: ' . $error);
+    $engine = RedMap\Connection::open($option_client . '://root@127.0.0.1/redmap?charset=utf-8', $callback ?: function ($title, $message) {
+        assert(false, "$title: $message");
     });
 
     assert($engine->connect(), 'Connection to database failed');
