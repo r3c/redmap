@@ -44,6 +44,7 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: yes
           MYSQL_DATABASE: redmap
           MYSQL_ROOT_PASSWORD: ""
+        options: --health-cmd "mysqladmin ping" --health-interval 1s --health-timeout 5s --health-retries 10
 
     steps:
       - uses: actions/checkout@v7
@@ -53,11 +54,6 @@ jobs:
           extensions: mysql
           ini-values: zend.assertions=1
           php-version: ${{ matrix.version.php }}
-      - name: Wait for MySQL
-        run: |
-          while ! mysqladmin ping --host=127.0.0.1 --user=root --password=$MYSQL_ROOT_PASSWORD --silent; do
-            sleep 1
-          done
       - name: Run test suite
         run: php -d zend.assertions=1 test/index.php client=${{ matrix.client }}
 
