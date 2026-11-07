@@ -156,14 +156,18 @@ class MySQLiClient implements \RedMap\Client
             $offset += strlen($escape);
         }
 
-        for ($reconnect = $this->reconnect; true; $reconnect = false) {
+        for ($can_reconnect = $this->reconnect; true; $can_reconnect = false) {
             $result = @$this->connection->query($query);
 
             if ($result !== false) {
                 return $result;
             }
 
-            if (!$reconnect || $this->connection->errno !== 2006 || !$this->connect()) {
+            $reconnect = $can_reconnect && (
+                $this->connection->errno === 2006 /* MySQL server has gone away */ ||
+                $this->connection->errno === 4031 /* The client was disconnected by the server because of inactivity */);
+
+            if (!$reconnect || !$this->connect()) {
                 $this->error('Query error', $this->connection->error);
 
                 return false;
